@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Report Diário - Linha de Infiltração</title>
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-card: #1e293b;
+            --bg-input: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-green: #10b981;
+            --accent-blue: #3b82f6;
+            --accent-amber: #f59e0b;
+            --border-color: #475569;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: var(--bg-primary); color: var(--text-main); padding: 24px 16px; min-height: 100vh; }
+        .header { max-width: 1200px; margin: 0 auto 24px auto; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border-color); padding-bottom: 16px; }
+        .header h1 { font-size: 1.5rem; color: var(--text-main); }
+        .header .subtitle { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; }
+        .container { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        @media (max-width: 900px) { .container { grid-template-columns: 1fr; } }
+        .card { background-color: var(--bg-card); border-radius: 12px; padding: 20px; border: 1px solid var(--border-color); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); }
+        .card-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 16px; color: var(--accent-blue); border-bottom: 1px solid var(--border-color); padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .form-group { margin-bottom: 14px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+        label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; font-weight: 500; }
+        input[type="text"], input[type="number"] { width: 100%; padding: 10px 12px; background-color: var(--bg-input); border: 1px solid var(--border-color); border-radius: 6px; color: #ffffff; font-size: 0.95rem; }
+        input:focus { outline: none; border-color: var(--accent-blue); }
+        .dynamic-row { display: flex; gap: 8px; margin-bottom: 8px; }
+        .dynamic-row input { flex: 1; }
+        .btn-remove { background-color: #ef4444; color: white; border: none; border-radius: 6px; padding: 0 12px; cursor: pointer; font-weight: bold; }
+        .btn-add { background-color: #3b82f6; color: white; border: none; border-radius: 6px; padding: 8px 12px; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; margin-bottom: 12px; }
+        .btn-reset { background-color: #ef4444; color: white; border: none; border-radius: 6px; padding: 6px 12px; font-size: 0.8rem; font-weight: bold; cursor: pointer; }
+        .section-subtitle { font-size: 0.9rem; font-weight: 600; color: var(--accent-amber); margin: 16px 0 10px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+        .preview-box { background-color: #0b141a; border-radius: 8px; padding: 16px; font-family: "Segoe UI", -apple-system, sans-serif; white-space: pre-wrap; word-break: break-word; font-size: 0.92rem; line-height: 1.5; color: #e9edef; border-left: 4px solid var(--accent-green); min-height: 420px; max-height: 600px; overflow-y: auto; }
+        .btn-group { display: flex; gap: 12px; margin-top: 16px; }
+        .btn { flex: 1; padding: 12px 18px; border: none; border-radius: 8px; font-weight: 600; font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-success { background-color: #25d366; color: #000; }
+        .btn-secondary { background-color: var(--accent-blue); color: #fff; }
+        .toast { position: fixed; bottom: 20px; right: 20px; background-color: var(--accent-green); color: #000; padding: 12px 24px; border-radius: 8px; font-weight: bold; display: none; z-index: 1000; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div>
+            <h1>📋 Report Diário Infiltração</h1>
+            <div class="subtitle">Sincronizado automaticamente no Firebase</div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <div class="card-title">
+                <span>📝 Dados da Produção</span>
+                <button class="btn-reset" onclick="limparTudo()">🧹 Limpar Turno</button>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group"><label>🎯 Objetivo</label><input type="number" id="objetivo" value="430" oninput="processar()"></div>
+                <div class="form-group"><label>📊 Produção Realizada</label><input type="text" id="prodRealizada" value="464 Turno A" oninput="processar()"></div>
+            </div>
+
+            <div class="form-row-3">
+                <div class="form-group"><label>🚗 Prod. SA6</label><input type="number" id="prodSA6" value="285" oninput="processar()"></div>
+                <div class="form-group"><label>🫧 Bolhas</label><input type="number" id="bolhas" value="73" oninput="processar()"></div>
+                <div class="form-group"><label>❌ Carros NOK</label><input type="number" id="carrosNOK" value="64" oninput="processar()"></div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group"><label>📲 Liberação Offline</label><input type="number" id="liberacaoOffline" value="0" oninput="processar()"></div>
+                <div class="form-group"><label>🔄 Reinspeção</label><input type="number" id="reinspecao" value="0" oninput="processar()"></div>
+            </div>
+
+            <div class="section-subtitle">🚨 TOP 3 Problemas</div>
+            <div class="form-group">
+                <label>1️⃣ Primeiro Lugar</label>
+                <div class="form-row" style="grid-template-columns: 3fr 1fr;">
+                    <input type="text" id="top1_desc" value="SA6 : Infiltração na porta traseira direita ( classe A)" oninput="processar()">
+                    <input type="number" id="top1_qtd" value="30" oninput="processar()">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>2️⃣ Segundo Lugar</label>
+                <div class="form-row" style="grid-template-columns: 3fr 1fr;">
+                    <input type="text" id="top2_desc" value="SA6: Infiltração na porta esquerda frente ( classe A)" oninput="processar()">
+                    <input type="number" id="top2_qtd" value="12" oninput="processar()">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>3️⃣ Terceiro Lugar</label>
+                <div class="form-row" style="grid-template-columns: 3fr 1fr;">
+                    <input type="text" id="top3_desc" value="SA6 : Infiltração na porta esquerda traseira ( classe A)" oninput="processar()">
+                    <input type="number" id="top3_qtd" value="6" oninput="processar()">
+                </div>
+            </div>
+
+            <div class="section-subtitle">⚠️ Ocorrência / Ação</div>
+            <div class="form-group"><label>Ocorrência</label><input type="text" id="ocorrencia" value="Desalinhamento de chapas do pisos causando tropeços." oninput="processar()"></div>
+            <div class="form-group"><label>Ação Tomada</label><input type="text" id="acao" value="Solicitado intervenção de manutenção." oninput="processar()"></div>
+
+            <div class="section-subtitle">🔍 Auditoria Teste Intensivo</div>
+            <div id="container-auditoria"></div>
+            <button class="btn-add" onclick="adicionarCampoAuditoria()">➕ Adicionar Carro Auditoria</button>
+
+            <div class="section-subtitle">⏱️ SONG SA6 30 Minutos</div>
+            <div id="container-song"></div>
+            <button class="btn-add" onclick="adicionarCampoSong()">➕ Adicionar Carro SONG SA6</button>
+
+            <div class="section-subtitle">📝 Observações Gerais</div>
+            <div id="container-obs"></div>
+            <button class="btn-add" onclick="adicionarCampoObs()">➕ Adicionar Observação</button>
+        </div>
+
+        <div>
+            <div class="card" style="position: sticky; top: 20px;">
+                <div class="card-title">📱 Pré-visualização para WhatsApp</div>
+                <div id="preview" class="preview-box"></div>
+                <div class="btn-group">
+                    <button class="btn btn-success" onclick="copiarTexto()">📋 Copiar Mensagem</button>
+                    <button class="btn btn-secondary" onclick="enviarWhatsApp()">📲 Abrir no WhatsApp</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">Texto copiado com sucesso!</div>
+
+    <!-- INTEGRACAO COM O FIREBASE (TURNO-A) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBeWssEdC-JzbigEEYFj7pE71V_wVf2_HY",
+            authDomain: "turno-a.firebaseapp.com",
+            projectId: "turno-a",
+            storageBucket: "turno-a.firebasestorage.app",
+            messagingSenderId: "508911260921",
+            appId: "1:508911260921:web:4252cf00547b17af207e28",
+            measurementId: "G-2DNL08Z86R"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Função global para salvar no Firebase Firestore
+        window.salvarNoFirebase = async function(dados) {
+            try {
+                await setDoc(doc(db, "reports", "turno_a_atual"), {
+                    ...dados,
+                    atualizadoEm: new Date().toISOString()
+                });
+            } catch (e) {
+                console.error("Erro ao salvar no Firebase:", e);
+            }
+        };
+
+        // Escutar alterações do Firebase em tempo real
+        onSnapshot(doc(db, "reports", "turno_a_atual"), (snapshot) => {
+            if (snapshot.exists()) {
+                const d = snapshot.data();
+                // Apenas carrega se o usuário não estiver editando no momento
+                if (!window.estaEditando) {
+                    window.preencherCamposComDados(d);
+                }
+            }
+        });
+    </script>
+
+    <script>
+        const STORAGE_KEY = 'app_producao_infiltracao';
+        window.estaEditando = false;
+
+        function adicionarCampoAuditoria(val = '') {
+            const container = document.getElementById('container-auditoria');
+            const row = document.createElement('div');
+            row.className = 'dynamic-row';
+            row.innerHTML = `<input type="text" class="input-auditoria" value="${val}" placeholder="Ex: VK072138 - OK" oninput="processar()"><button class="btn-remove" onclick="removerCampo(this)">✕</button>`;
+            container.appendChild(row);
+            processar();
+        }
+
+        function adicionarCampoSong(val = '') {
+            const container = document.getElementById('container-song');
+            const row = document.createElement('div');
+            row.className = 'dynamic-row';
+            row.innerHTML = `<input type="text" class="input-song" value="${val}" placeholder="Ex: SA6 - VK087991 - OK" oninput="processar()"><button class="btn-remove" onclick="removerCampo(this)">✕</button>`;
+            container.appendChild(row);
+            processar();
+        }
+
+        function adicionarCampoObs(val = '') {
+            const container = document.getElementById('container-obs');
+            const row = document.createElement('div');
+            row.className = 'dynamic-row';
+            row.innerHTML = `<input type="text" class="input-obs" value="${val}" placeholder="Ex: Digite a observação..." oninput="processar()"><button class="btn-remove" onclick="removerCampo(this)">✕</button>`;
+            container.appendChild(row);
+            processar();
+        }
+
+        function removerCampo(btn) { btn.parentElement.remove(); processar(); }
+
+        function extrairDadosFormulario() {
+            return {
+                objetivo: document.getElementById('objetivo').value,
+                prodRealizada: document.getElementById('prodRealizada').value,
+                prodSA6: document.getElementById('prodSA6').value,
+                bolhas: document.getElementById('bolhas').value,
+                carrosNOK: document.getElementById('carrosNOK').value,
+                liberacaoOffline: document.getElementById('liberacaoOffline').value,
+                reinspecao: document.getElementById('reinspecao').value,
+                top1_desc: document.getElementById('top1_desc').value,
+                top1_qtd: document.getElementById('top1_qtd').value,
+                top2_desc: document.getElementById('top2_desc').value,
+                top2_qtd: document.getElementById('top2_qtd').value,
+                top3_desc: document.getElementById('top3_desc').value,
+                top3_qtd: document.getElementById('top3_qtd').value,
+                ocorrencia: document.getElementById('ocorrencia').value,
+                acao: document.getElementById('acao').value,
+                auditoria: Array.from(document.querySelectorAll('.input-auditoria')).map(i => i.value),
+                song: Array.from(document.querySelectorAll('.input-song')).map(i => i.value),
+                obs: Array.from(document.querySelectorAll('.input-obs')).map(i => i.value)
+            };
+        }
+
+        function salvarMemoria() {
+            const dados = extrairDadosFormulario();
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(dados));
+            if (typeof window.salvarNoFirebase === 'function') {
+                window.salvarNoFirebase(dados);
+            }
+        }
+
+        window.preencherCamposComDados = function(d) {
+            document.getElementById('objetivo').value = d.objetivo !== undefined ? d.objetivo : '';
+            document.getElementById('prodRealizada').value = d.prodRealizada !== undefined ? d.prodRealizada : '';
+            document.getElementById('prodSA6').value = d.prodSA6 !== undefined ? d.prodSA6 : '';
+            document.getElementById('bolhas').value = d.bolhas !== undefined ? d.bolhas : '';
+            document.getElementById('carrosNOK').value = d.carrosNOK !== undefined ? d.carrosNOK : '';
+            document.getElementById('liberacaoOffline').value = d.liberacaoOffline !== undefined ? d.liberacaoOffline : '0';
+            document.getElementById('reinspecao').value = d.reinspecao !== undefined ? d.reinspecao : '0';
+            document.getElementById('top1_desc').value = d.top1_desc !== undefined ? d.top1_desc : '';
+            document.getElementById('top1_qtd').value = d.top1_qtd !== undefined ? d.top1_qtd : '';
+            document.getElementById('top2_desc').value = d.top2_desc !== undefined ? d.top2_desc : '';
+            document.getElementById('top2_qtd').value = d.top2_qtd !== undefined ? d.top2_qtd : '';
+            document.getElementById('top3_desc').value = d.top3_desc !== undefined ? d.top3_desc : '';
+            document.getElementById('top3_qtd').value = d.top3_qtd !== undefined ? d.top3_qtd : '';
+            document.getElementById('ocorrencia').value = d.ocorrencia !== undefined ? d.ocorrencia : '';
+            document.getElementById('acao').value = d.acao !== undefined ? d.acao : '';
+
+            document.getElementById('container-auditoria').innerHTML = '';
+            document.getElementById('container-song').innerHTML = '';
+            document.getElementById('container-obs').innerHTML = '';
+
+            if (d.auditoria) d.auditoria.forEach(v => adicionarCampoAuditoria(v));
+            if (d.song) d.song.forEach(v => adicionarCampoSong(v));
+            if (d.obs) d.obs.forEach(v => adicionarCampoObs(v));
+
+            const text = gerarTextoWhatsApp();
+            document.getElementById('preview').innerText = text;
+        };
+
+        function carregarMemoria() {
+            const dadosSalvos = localStorage.getItem(STORAGE_KEY);
+            if (!dadosSalvos) {
+                adicionarCampoAuditoria('VK072138 - OK');
+                adicionarCampoSong('SA6 - VK087991 - OK');
+                adicionarCampoSong('SA6 - VK085797 - OK');
+                adicionarCampoSong('SA6 - VK090586 - OK');
+                adicionarCampoObs('Baixo volume de carros na linha de chuva.');
+                return;
+            }
+            window.preencherCamposComDados(JSON.parse(dadosSalvos));
+        }
+
+        function processar() {
+            window.estaEditando = true;
+            salvarMemoria();
+            const text = gerarTextoWhatsApp();
+            document.getElementById('preview').innerText = text;
+            setTimeout(() => { window.estaEditando = false; }, 2000);
+        }
+
+        function gerarTextoWhatsApp() {
+            const d = extrairDadosFormulario();
+
+            const auditoria = d.auditoria.map(v => v.trim()).filter(v => v).join('\n');
+            const song = d.song.map(v => v.trim()).filter(v => v).join('\n');
+
+            let contadorObs = 1;
+            const obs = d.obs.map(v => v.trim()).filter(v => v).map(v => `• Obs ${contadorObs++}: ${v}`).join('\n');
+
+            let text = `📋 REPORT DIÁRIO LINHA DE INFILTRAÇÃO
+
+🎯 Objetivo: ${d.objetivo}
+📊 Produção realizada: ${d.prodRealizada}
+🚗 Produção de SA6: ${d.prodSA6}
+🫧 Bolhas: ${d.bolhas}
+❌ Carros NOK: ${d.carrosNOK}
+📲 Liberação Offline: ${d.liberacaoOffline}
+🔄 Reinspeção: ${d.reinspecao}
+
+🚨 TOP 3 PROBLEMAS DETECTADOS
+1️⃣ ${d.top1_desc}${d.top1_qtd ? ' - ' + String(d.top1_qtd).padStart(2, '0') : ''}
+2️⃣ ${d.top2_desc}${d.top2_qtd ? ' - ' + String(d.top2_qtd).padStart(2, '0') : ''}
+3️⃣ ${d.top3_desc}${d.top3_qtd ? ' - ' + String(d.top3_qtd).padStart(2, '0') : ''}
+
+⚠️ Ocorrência: ${d.ocorrencia}
+🔧 Ação: ${d.acao}`;
+
+            if (auditoria) text += `\n\n🔍 Auditoria teste intensivo:\n${auditoria}`;
+            if (song) text += `\n\n⏱️ SONG SA6 30 minutos:\n${song}`;
+            if (obs) text += `\n\n📝 Observações:\n${obs}`;
+
+            return text;
+        }
+
+        function limparTudo() {
+            if (confirm("Deseja realmente limpar todos os campos do turno atual?")) {
+                localStorage.removeItem(STORAGE_KEY);
+
+                const inputsNumericos = document.querySelectorAll('input[type="number"]');
+                inputsNumericos.forEach(input => input.value = 0);
+
+                const inputsTexto = document.querySelectorAll('input[type="text"]:not(.input-auditoria):not(.input-song):not(.input-obs)');
+                inputsTexto.forEach(input => input.value = '');
+
+                document.getElementById('container-auditoria').innerHTML = '';
+                document.getElementById('container-song').innerHTML = '';
+                document.getElementById('container-obs').innerHTML = '';
+
+                processar();
+            }
+        }
+
+        function copiarTexto() {
+            const texto = gerarTextoWhatsApp();
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(texto)
+                    .then(() => exibirToast())
+                    .catch(() => copiarFallback(texto));
+            } else {
+                copiarFallback(texto);
+            }
+        }
+
+        function copiarFallback(texto) {
+            try {
+                const textArea = document.createElement("textarea");
+                textArea.value = texto;
+                
+                textArea.style.position = "fixed";
+                textArea.style.left = "-999999px";
+                textArea.style.top = "-999999px";
+                document.body.appendChild(textArea);
+                
+                textArea.focus();
+                textArea.select();
+
+                const executado = document.execCommand('copy');
+                document.body.removeChild(textArea);
+
+                if (executado) {
+                    exibirToast();
+                } else {
+                    alert("Não foi possível copiar automaticamente. Selecione e copie o texto manualmente.");
+                }
+            } catch (err) {
+                alert("Erro ao tentar copiar o texto.");
+            }
+        }
+
+        function exibirToast() {
+            const toast = document.getElementById('toast');
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 2000);
+        }
+
+        function enviarWhatsApp() {
+            window.open("https://api.whatsapp.com/send?text=" + encodeURIComponent(gerarTextoWhatsApp()), '_blank');
+        }
+
+        window.onload = carregarMemoria;
+    </script>
+</body>
+</html>
