@@ -59,7 +59,8 @@
         .dynamic-inputs input { flex: 2; }
         .dynamic-inputs select { flex: 1; }
         .dynamic-inputs button { flex: 0; }
-        .problema-input { display: none; width: 100%; }
+        .tempo-select { flex: 1.2; background-color: var(--bg-input); color: #fff; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 11px 10px; font-size: 0.9rem; cursor: pointer; }
+        .problema-input, .tempo-custom-input { display: none; width: 100%; margin-top: 4px; }
 
         .btn-remove { background-color: #dc2626; color: white; border: none; border-radius: var(--radius-md); padding: 0 14px; height: 43px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
         .btn-remove:hover { background-color: #b91c1c; }
@@ -177,7 +178,7 @@
             <div class="form-group"><label>Ocorrência</label><input type="text" id="ocorrencia" placeholder="Descreva a ocorrência..."></div>
             <div class="form-group"><label>Ação Tomada</label><input type="text" id="acao" placeholder="Descreva a ação..."></div>
 
-            <!-- AUDITORIA TESTE INTENSIVO COM STATUS OK/NOK E CAMPO DE PROBLEMA -->
+            <!-- AUDITORIA COM OPÇÕES EXPANDIDAS E TEMPO PERSONALIZADO -->
             <div class="section-subtitle">🔍 Auditoria Teste Intensivo</div>
             <div id="container-auditoria"></div>
             <button class="btn-add" onclick="adicionarCampoAuditoria()">➕ Adicionar Carro Auditoria</button>
@@ -301,25 +302,55 @@
             calcularEvolucaoPersonalizada();
         }
 
-        function adicionarCampoAuditoria(veiculoVal = '', statusVal = 'OK', problemaVal = '') {
+        function adicionarCampoAuditoria(veiculoVal = '', statusVal = 'OK', tempoVal = '30 min', problemaVal = '') {
             const container = document.getElementById('container-auditoria');
             const row = document.createElement('div');
             row.className = 'dynamic-row';
             
             const displayProblema = statusVal === 'NOK' ? 'block' : 'none';
+            
+            // Verifica se o tempo escolhido é um dos padrões ou personalizado
+            const temposPadrao = ["15 min", "30 min", "45 min", "60 min", "90 min", "120 min", "3 horas", "4 horas"];
+            let selectVal = temposPadrao.includes(tempoVal) ? tempoVal : "outro";
+            let customDisplay = selectVal === "outro" ? "block" : "none";
+            let customVal = selectVal === "outro" ? tempoVal : "";
 
             row.innerHTML = `
                 <div class="dynamic-inputs">
                     <input type="text" class="input-auditoria-veiculo" value="${veiculoVal}" placeholder="Ex: Chassi / VIN" oninput="atualizarPreview()">
+                    <select class="tempo-select input-auditoria-tempo-select" onchange="tratarMudancaTempo(this); atualizarPreview()">
+                        <option value="15 min" ${selectVal === '15 min' ? 'selected' : ''}>15 min</option>
+                        <option value="30 min" ${selectVal === '30 min' ? 'selected' : ''}>30 min</option>
+                        <option value="45 min" ${selectVal === '45 min' ? 'selected' : ''}>45 min</option>
+                        <option value="60 min" ${selectVal === '60 min' ? 'selected' : ''}>60 min</option>
+                        <option value="90 min" ${selectVal === '90 min' ? 'selected' : ''}>90 min</option>
+                        <option value="120 min" ${selectVal === '120 min' ? 'selected' : ''}>120 min</option>
+                        <option value="3 horas" ${selectVal === '3 horas' ? 'selected' : ''}>3 horas</option>
+                        <option value="4 horas" ${selectVal === '4 horas' ? 'selected' : ''}>4 horas</option>
+                        <option value="outro" ${selectVal === 'outro' ? 'selected' : ''}>Outro (Personalizado)...</option>
+                    </select>
                     <select class="input-auditoria-status" onchange="tratarMudancaStatus(this); atualizarPreview()">
                         <option value="OK" ${statusVal === 'OK' ? 'selected' : ''}>OK</option>
                         <option value="NOK" ${statusVal === 'NOK' ? 'selected' : ''}>NOK</option>
                     </select>
                     <button class="btn-remove" onclick="removerCampo(this); atualizarPreview()">✕</button>
                 </div>
+                <input type="text" class="tempo-custom-input input-auditoria-tempo-custom" value="${customVal}" placeholder="Digite o tempo (Ex: 50 min)..." style="display: ${customDisplay};" oninput="atualizarPreview()">
                 <input type="text" class="problema-input input-auditoria-problema" value="${problemaVal}" placeholder="Descreva o problema encontrado (NOK)..." style="display: ${displayProblema};" oninput="atualizarPreview()">
             `;
             container.appendChild(row);
+        }
+
+        function tratarMudancaTempo(selectEl) {
+            const row = selectEl.closest('.dynamic-row');
+            const customInput = row.querySelector('.tempo-custom-input');
+            if (selectEl.value === 'outro') {
+                customInput.style.display = 'block';
+                customInput.focus();
+            } else {
+                customInput.style.display = 'none';
+                customInput.value = '';
+            }
         }
 
         function tratarMudancaStatus(selectEl) {
@@ -327,6 +358,7 @@
             const problemaInput = row.querySelector('.problema-input');
             if (selectEl.value === 'NOK') {
                 problemaInput.style.display = 'block';
+                problemaInput.focus();
             } else {
                 problemaInput.style.display = 'none';
                 problemaInput.value = '';
@@ -352,14 +384,18 @@
         function extrairDadosFormulario() {
             const auditoriaItems = Array.from(document.querySelectorAll('.dynamic-row')).map(row => {
                 const v = row.querySelector('.input-auditoria-veiculo');
+                const ts = row.querySelector('.input-auditoria-tempo-select');
+                const tc = row.querySelector('.input-auditoria-tempo-custom');
                 const s = row.querySelector('.input-auditoria-status');
                 const p = row.querySelector('.input-auditoria-problema');
-                if (v && s) {
+                
+                if (v && s && ts) {
                     const veiculo = v.value.trim();
+                    let tempo = ts.value === 'outro' && tc ? tc.value.trim() : ts.value;
                     const status = s.value;
                     const problema = p ? p.value.trim() : '';
                     if (veiculo) {
-                        return { veiculo, status, problema };
+                        return { veiculo, tempo: tempo || '30 min', status, problema };
                     }
                 }
                 return null;
@@ -435,7 +471,7 @@
                 document.getElementById('top3_qtd').value = '';
                 document.getElementById('ocorrencia').value = '';
                 document.getElementById('acao').value = '';
-                adicionarCampoAuditoria('VK072138', 'OK', '');
+                adicionarCampoAuditoria('VK072138', 'OK', '30 min', '');
                 adicionarCampoObs('Baixo volume na linha.');
             } else {
                 const d = JSON.parse(salvo);
@@ -459,10 +495,9 @@
                 if (d.auditoria && d.auditoria.length > 0) {
                     d.auditoria.forEach(item => {
                         if (typeof item === 'object') {
-                            adicionarCampoAuditoria(item.veiculo, item.status, item.problema);
+                            adicionarCampoAuditoria(item.veiculo, item.status, item.tempo || '30 min', item.problema);
                         } else {
-                            // Compatibilidade com formato antigo string
-                            adicionarCampoAuditoria(item, 'OK', '');
+                            adicionarCampoAuditoria(item, 'OK', '30 min', '');
                         }
                     });
                 } else {
@@ -483,9 +518,9 @@
             
             const auditoriaText = d.auditoria.map(item => {
                 if (item.status === 'NOK') {
-                    return `• ${item.veiculo} - NOK ❌ (${item.problema || 'Sem descrição'})`;
+                    return `• ${item.veiculo} (${item.tempo}) - NOK ❌ (${item.problema || 'Sem descrição'})`;
                 }
-                return `• ${item.veiculo} - OK ✅`;
+                return `• ${item.veiculo} (${item.tempo}) - OK ✅`;
             }).join('\n');
 
             let cnt = 1;
