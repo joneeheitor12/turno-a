@@ -6,6 +6,11 @@
     <title>Gerador de Report Diário - Linha de Infiltração</title>
     <!-- Biblioteca SheetJS para manipulação de Excel (.xlsx) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
+    <!-- Firebase SDKs (Compat Version para uso direto via CDN) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
     <style>
         :root {
             --bg-primary: #0b1329;
@@ -106,7 +111,7 @@
     <div class="header">
         <div>
             <h1>📋 Report Diário Infiltração</h1>
-            <div class="subtitle">Controle de Produção, Metas, Liberação Offline e Reparos</div>
+            <div class="subtitle">Controle de Produção, Metas, Liberação Offline e Reparos (Cloud Firebase)</div>
         </div>
         <div class="date-selector-box">
             <label for="dataLancamento">📅 Data de Lançamento:</label>
@@ -221,7 +226,7 @@
                         </tr>
                     </thead>
                     <tbody id="tabela-historico-corpo">
-                        <tr><td colspan="8" style="text-align: center; color: var(--text-muted);">Nenhum dado registrado.</td></tr>
+                        <tr><td colspan="8" style="text-align: center; color: var(--text-muted);">Carregando dados da nuvem...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -266,22 +271,54 @@
     <div id="toast" class="toast">Operação realizada com sucesso!</div>
 
     <script>
-        const STORAGE_PREFIX = 'report_infiltracao_data_';
-        let dataAtual = '';
+        // ==========================================================
+        // ⚙️ CONFIGURAÇÃO DO FIREBASE (Cole suas chaves do Console do Firebase abaixo)
+        // ==========================================================
+        const firebaseConfig = {
+            apiKey: "SUA_API_KEY_AQUI",
+            authDomain: "SEU_PROJETO.firebaseapp.com",
+            projectId: "SEU_PROJETO_ID",
+            storageBucket: "SEU_PROJETO.appspot.com",
+            messagingSenderId: "SEU_MESSAGING_SENDER_ID",
+            appId: "SEU_APP_ID"
+        };
 
-        function inicializarDataHoje() {
+        // Inicializar Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const COLLECTION_NAME = "reports_infiltracao";
+
+        let dataAtual = '';
+        let cacheRegistros = []; // Cache local em memória para agilizar gráficos e tabelas
+
+        async function inicializarApp() {
             const hoje = new Date().toISOString().split('T')[0];
             document.getElementById('dataLancamento').value = hoje;
             document.getElementById('filtroDataUnica').value = hoje;
             document.getElementById('filtroDataInicio').value = hoje;
             document.getElementById('filtroDataFim').value = hoje;
             dataAtual = hoje;
-            carregarDadosData(dataAtual);
+
+            await carregarTodosRegistrosDoFirebase();
+            await carregarDadosData(dataAtual);
         }
 
-        function mudarDataLancamento() {
+        async function carregarTodosRegistrosDoFirebase() {
+            try {
+                const snapshot = await db.collection(COLLECTION_NAME).get();
+                cacheRegistros = [];
+                snapshot.forEach(doc => {
+                    cacheRegistros.push(doc.data());
+                });
+                cacheRegistros.sort((a,b) => new Date(a.data) - new Date(b.data));
+            } catch (error) {
+                console.error("Erro ao buscar dados do Firebase:", error);
+            }
+        }
+
+        async function mudarDataLancamento() {
             dataAtual = document.getElementById('dataLancamento').value;
-            carregarDadosData(dataAtual);
+            await carregarDadosData(dataAtual);
         }
 
         function trocarAba(aba, event) {
@@ -309,7 +346,6 @@
             
             const displayProblema = statusVal === 'NOK' ? 'block' : 'none';
             
-            // Verifica se o tempo escolhido é um dos padrões ou personalizado
             const temposPadrao = ["15 min", "30 min", "45 min", "60 min", "90 min", "120 min", "3 horas", "4 horas"];
             let selectVal = temposPadrao.includes(tempoVal) ? tempoVal : "outro";
             let customDisplay = selectVal === "outro" ? "block" : "none";
@@ -439,72 +475,88 @@
             return true;
         }
 
-        function salvarDadosDoDia() {
+        async function salvarDadosDoDia() {
             if (!dataAtual) return;
             if (!validarPreenchimentoObrigatorio()) return;
 
             const dados = extrairDadosFormulario();
-            localStorage.setItem(STORAGE_PREFIX + dataAtual, JSON.stringify(dados));
-            exibirToast("✅ Dados salvos e atualizados com sucesso!");
-            atualizarPreview();
+            
+            try {
+                // Salvando no Firebase (Usando a data como ID do documento para evitar duplicatas por dia)
+                await db.collection(COLLECTION_NAME).doc(dataAtual).set(dados);
+                
+                // Atualiza o cache local
+                await carregarTodosRegistrosDoFirebase();
+                
+                exibirToast("✅ Dados salvos na nuvem com sucesso!");
+                atualizarPreview();
+            } catch (error) {
+                console.error("Erro ao salvar no Firebase:", error);
+                alert("❌ Erro ao salvar dados na nuvem. Verifique sua conexão e configurações do Firebase.");
+            }
         }
 
-        function carregarDadosData(dataStr) {
-            const salvo = localStorage.getItem(STORAGE_PREFIX + dataStr);
+        async function carregarDadosData(dataStr) {
             document.getElementById('container-auditoria').innerHTML = '';
             document.getElementById('container-obs').innerHTML = '';
 
-            if (!salvo) {
-                document.getElementById('objetivo').value = '';
-                document.getElementById('prodRealizada').value = '';
-                document.getElementById('prodSA6').value = '';
-                document.getElementById('bolhas').value = '';
-                document.getElementById('carrosNOK').value = '';
-                document.getElementById('liberacaoOffline').value = 0;
-                document.getElementById('reinspecao').value = 0;
-                document.getElementById('reparos').value = 0;
-                document.getElementById('top1_desc').value = '';
-                document.getElementById('top1_qtd').value = '';
-                document.getElementById('top2_desc').value = '';
-                document.getElementById('top2_qtd').value = '';
-                document.getElementById('top3_desc').value = '';
-                document.getElementById('top3_qtd').value = '';
-                document.getElementById('ocorrencia').value = '';
-                document.getElementById('acao').value = '';
-                adicionarCampoAuditoria('VK072138', 'OK', '30 min', '');
-                adicionarCampoObs('Baixo volume na linha.');
-            } else {
-                const d = JSON.parse(salvo);
-                document.getElementById('objetivo').value = d.objetivo;
-                document.getElementById('prodRealizada').value = d.prodRealizadaStr;
-                document.getElementById('prodSA6').value = d.prodSA6;
-                document.getElementById('bolhas').value = d.bolhas;
-                document.getElementById('carrosNOK').value = d.carrosNOK;
-                document.getElementById('liberacaoOffline').value = d.liberacaoOffline;
-                document.getElementById('reinspecao').value = d.reinspecao;
-                document.getElementById('reparos').value = d.reparos !== undefined ? d.reparos : 0;
-                document.getElementById('top1_desc').value = d.top1_desc;
-                document.getElementById('top1_qtd').value = d.top1_qtd;
-                document.getElementById('top2_desc').value = d.top2_desc;
-                document.getElementById('top2_qtd').value = d.top2_qtd;
-                document.getElementById('top3_desc').value = d.top3_desc;
-                document.getElementById('top3_qtd').value = d.top3_qtd;
-                document.getElementById('ocorrencia').value = d.ocorrencia;
-                document.getElementById('acao').value = d.acao;
-
-                if (d.auditoria && d.auditoria.length > 0) {
-                    d.auditoria.forEach(item => {
-                        if (typeof item === 'object') {
-                            adicionarCampoAuditoria(item.veiculo, item.status, item.tempo || '30 min', item.problema);
-                        } else {
-                            adicionarCampoAuditoria(item, 'OK', '30 min', '');
-                        }
-                    });
+            try {
+                const docRef = await db.collection(COLLECTION_NAME).doc(dataStr).get();
+                
+                if (!docRef.exists) {
+                    document.getElementById('objetivo').value = '';
+                    document.getElementById('prodRealizada').value = '';
+                    document.getElementById('prodSA6').value = '';
+                    document.getElementById('bolhas').value = '';
+                    document.getElementById('carrosNOK').value = '';
+                    document.getElementById('liberacaoOffline').value = 0;
+                    document.getElementById('reinspecao').value = 0;
+                    document.getElementById('reparos').value = 0;
+                    document.getElementById('top1_desc').value = '';
+                    document.getElementById('top1_qtd').value = '';
+                    document.getElementById('top2_desc').value = '';
+                    document.getElementById('top2_qtd').value = '';
+                    document.getElementById('top3_desc').value = '';
+                    document.getElementById('top3_qtd').value = '';
+                    document.getElementById('ocorrencia').value = '';
+                    document.getElementById('acao').value = '';
+                    adicionarCampoAuditoria('VK072138', 'OK', '30 min', '');
+                    adicionarCampoObs('Baixo volume na linha.');
                 } else {
-                    adicionarCampoAuditoria();
-                }
+                    const d = docRef.data();
+                    document.getElementById('objetivo').value = d.objetivo;
+                    document.getElementById('prodRealizada').value = d.prodRealizadaStr;
+                    document.getElementById('prodSA6').value = d.prodSA6;
+                    document.getElementById('bolhas').value = d.bolhas;
+                    document.getElementById('carrosNOK').value = d.carrosNOK;
+                    document.getElementById('liberacaoOffline').value = d.liberacaoOffline;
+                    document.getElementById('reinspecao').value = d.reinspecao;
+                    document.getElementById('reparos').value = d.reparos !== undefined ? d.reparos : 0;
+                    document.getElementById('top1_desc').value = d.top1_desc;
+                    document.getElementById('top1_qtd').value = d.top1_qtd;
+                    document.getElementById('top2_desc').value = d.top2_desc;
+                    document.getElementById('top2_qtd').value = d.top2_qtd;
+                    document.getElementById('top3_desc').value = d.top3_desc;
+                    document.getElementById('top3_qtd').value = d.top3_qtd;
+                    document.getElementById('ocorrencia').value = d.ocorrencia;
+                    document.getElementById('acao').value = d.acao;
 
-                if (d.obs) d.obs.forEach(v => adicionarCampoObs(v));
+                    if (d.auditoria && d.auditoria.length > 0) {
+                        d.auditoria.forEach(item => {
+                            if (typeof item === 'object') {
+                                adicionarCampoAuditoria(item.veiculo, item.status, item.tempo || '30 min', item.problema);
+                            } else {
+                                adicionarCampoAuditoria(item, 'OK', '30 min', '');
+                            }
+                        });
+                    } else {
+                        adicionarCampoAuditoria();
+                    }
+
+                    if (d.obs) d.obs.forEach(v => adicionarCampoObs(v));
+                }
+            } catch (error) {
+                console.error("Erro ao carregar dados:", error);
             }
             atualizarPreview();
         }
@@ -557,32 +609,24 @@
             return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : iso;
         }
 
-        function limparTudo() {
-            if (confirm("Deseja limpar os dados desta data?")) {
-                localStorage.removeItem(STORAGE_PREFIX + dataAtual);
-                carregarDadosData(dataAtual);
-            }
-        }
-
-        function obterTodosRegistros() {
-            let registros = [];
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key.startsWith(STORAGE_PREFIX)) {
-                    try {
-                        const item = JSON.parse(localStorage.getItem(key));
-                        if(item && item.data) registros.push(item);
-                    } catch(e){}
+        async function limparTudo() {
+            if (confirm("Deseja apagar os dados desta data da nuvem?")) {
+                try {
+                    await db.collection(COLLECTION_NAME).doc(dataAtual).delete();
+                    await carregarTodosRegistrosDoFirebase();
+                    await carregarDadosData(dataAtual);
+                    exibirToast("🗑️ Dados limpos com sucesso!");
+                } catch(error) {
+                    console.error("Erro ao limpar:", error);
                 }
             }
-            return registros.sort((a,b) => new Date(a.data) - new Date(b.data));
         }
 
         function atualizarTabelaHistorico() {
             const corpo = document.getElementById('tabela-historico-corpo');
-            const regs = obterTodosRegistros();
+            const regs = cacheRegistros;
             if (regs.length === 0) {
-                corpo.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted);">Nenhum dado registrado.</td></tr>`;
+                corpo.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted);">Nenhum dado registrado na nuvem.</td></tr>`;
                 return;
             }
             corpo.innerHTML = '';
@@ -601,7 +645,7 @@
         }
 
         function calcularEvolucaoPersonalizada() {
-            const regs = obterTodosRegistros();
+            const regs = cacheRegistros;
             const container = document.getElementById('kpi-container-metrics');
             if (regs.length === 0) {
                 container.innerHTML = `<p style="color:var(--text-muted)">Sem dados suficientes para cálculo.</p>`;
@@ -680,7 +724,7 @@
         }
 
         function exportarExcel() {
-            const regs = obterTodosRegistros();
+            const regs = cacheRegistros;
             if(regs.length === 0) { alert("Não há dados para exportar."); return; }
             
             const dadosPlanilha = regs.map(r => ({
@@ -701,12 +745,12 @@
             XLSX.writeFile(workbook, "report_infiltracao_evolucao.xlsx");
         }
 
-        function importarExcel(event) {
+        async function importarExcel(event) {
             const file = event.target.files[0];
             if(!file) return;
 
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = async function(e) {
                 try {
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, {type: 'array'});
@@ -714,7 +758,7 @@
                     const worksheet = workbook.Sheets[firstSheetName];
                     const json = XLSX.utils.sheet_to_json(worksheet);
 
-                    json.forEach(row => {
+                    for (let row of json) {
                         let dt = row["Data"];
                         if (dt) {
                             if (dt.includes('/')) {
@@ -742,12 +786,13 @@
                                 acao: "",
                                 auditoria: [], obs: []
                             };
-                            localStorage.setItem(STORAGE_PREFIX + dt, JSON.stringify(objFormatado));
+                            await db.collection(COLLECTION_NAME).doc(dt).set(objFormatado);
                         }
-                    });
+                    }
 
-                    alert("Planilha importada com sucesso!");
-                    carregarDadosData(dataAtual);
+                    await carregarTodosRegistrosDoFirebase();
+                    await carregarDadosData(dataAtual);
+                    alert("Planilha importada e sincronizada com o Firebase com sucesso!");
                 } catch(err) {
                     alert("Erro ao ler o arquivo Excel. Verifique o formato.");
                     console.error(err);
@@ -771,7 +816,7 @@
             window.open("https://api.whatsapp.com/send?text=" + encodeURIComponent(gerarTextoWhatsApp()), '_blank');
         }
 
-        window.onload = inicializarDataHoje;
+        window.onload = inicializarApp;
     </script>
 </body>
 </html>
