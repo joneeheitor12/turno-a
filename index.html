@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerador de Report Diário - Linha de Infiltração</title>
+    <!-- Biblioteca SheetJS para manipulação de Excel (.xlsx) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         :root {
             --bg-primary: #0f172a;
@@ -19,12 +21,25 @@
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { background-color: var(--bg-primary); color: var(--text-main); padding: 24px 16px; min-height: 100vh; }
-        .header { max-width: 1200px; margin: 0 auto 24px auto; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border-color); padding-bottom: 16px; }
+        .header { max-width: 1200px; margin: 0 auto 20px auto; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border-color); padding-bottom: 16px; flex-wrap: wrap; gap: 15px; }
         .header h1 { font-size: 1.5rem; color: var(--text-main); }
         .header .subtitle { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; }
-        .container { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-        @media (max-width: 900px) { .container { grid-template-columns: 1fr; } }
-        .card { background-color: var(--bg-card); border-radius: 12px; padding: 20px; border: 1px solid var(--border-color); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); }
+        
+        .date-selector-box { display: flex; align-items: center; gap: 10px; background: var(--bg-card); padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border-color); }
+        .date-selector-box label { font-size: 0.8rem; color: var(--accent-amber); font-weight: bold; margin-bottom: 0; }
+        .date-selector-box input[type="date"] { background: var(--bg-input); color: #fff; border: 1px solid var(--border-color); padding: 6px 10px; border-radius: 6px; font-size: 0.9rem; cursor: pointer; }
+
+        .nav-tabs { max-width: 1200px; margin: 0 auto 20px auto; display: flex; gap: 10px; flex-wrap: wrap; }
+        .tab-btn { background-color: var(--bg-card); color: var(--text-muted); border: 1px solid var(--border-color); padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .tab-btn.active { background-color: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
+
+        .container { max-width: 1200px; margin: 0 auto; display: none; grid-template-columns: 1fr 1fr; gap: 24px; }
+        .container.active { display: grid; }
+        .container#tab-historico.active, .container#tab-evolucao.active { display: block; }
+
+        @media (max-width: 900px) { .container.active { grid-template-columns: 1fr; } }
+        
+        .card { background-color: var(--bg-card); border-radius: 12px; padding: 20px; border: 1px solid var(--border-color); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); margin-bottom: 20px; }
         .card-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 16px; color: var(--accent-blue); border-bottom: 1px solid var(--border-color); padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
         .form-group { margin-bottom: 14px; }
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -43,7 +58,19 @@
         .btn { flex: 1; padding: 12px 18px; border: none; border-radius: 8px; font-weight: 600; font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
         .btn-success { background-color: #25d366; color: #000; }
         .btn-secondary { background-color: var(--accent-blue); color: #fff; }
+        .btn-excel { background-color: #10b981; color: #000; }
         .toast { position: fixed; bottom: 20px; right: 20px; background-color: var(--accent-green); color: #000; padding: 12px 24px; border-radius: 8px; font-weight: bold; display: none; z-index: 1000; }
+        
+        .history-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
+        .history-table th, .history-table td { border: 1px solid var(--border-color); padding: 10px 12px; text-align: left; }
+        .history-table th { background-color: var(--bg-input); color: var(--text-main); }
+        .history-table tr:hover { background-color: rgba(59, 130, 246, 0.05); }
+        .badge-date { background-color: var(--accent-amber); color: #000; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
+        
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px; }
+        .kpi-card { background: var(--bg-input); padding: 16px; border-radius: 8px; border-left: 4px solid var(--accent-blue); }
+        .kpi-card h4 { font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px; }
+        .kpi-card .val { font-size: 1.4rem; font-weight: bold; color: #fff; }
     </style>
 </head>
 <body>
@@ -51,59 +78,78 @@
     <div class="header">
         <div>
             <h1>📋 Report Diário Infiltração</h1>
-            <div class="subtitle">Sincronizado automaticamente no Firebase</div>
+            <div class="subtitle">Controle de Produção, Metas, Liberação Offline e Reparos</div>
+        </div>
+        <div class="date-selector-box">
+            <label for="dataLancamento">📅 Data do Lançamento:</label>
+            <input type="date" id="dataLancamento" onchange="mudarDataLancamento()">
         </div>
     </div>
 
-    <div class="container">
+    <div class="nav-tabs">
+        <button class="tab-btn active" onclick="trocarAba('editor', event)">✏️ Edição & Report</button>
+        <button class="tab-btn" onclick="trocarAba('historico', event)">📈 Histórico por Data</button>
+        <button class="tab-btn" onclick="trocarAba('evolucao', event)">📊 Evolução Semanal & Mensal</button>
+        <button class="tab-btn btn-excel" onclick="exportarExcel()" style="margin-left:auto;">📥 Exportar Excel</button>
+        <button class="tab-btn" style="background:#8b5cf6; color:#fff; border-color:#7c3aed;" onclick="document.getElementById('importFile').click()">📤 Importar Excel</button>
+        <input type="file" id="importFile" accept=".xlsx, .xls, .csv" style="display:none" onchange="importarExcel(event)">
+    </div>
+
+    <!-- ABA 1: EDITOR -->
+    <div id="tab-editor" class="container active">
         <div class="card">
             <div class="card-title">
-                <span>📝 Dados da Produção</span>
-                <button class="btn-reset" onclick="limparTudo()">🧹 Limpar Turno</button>
+                <span>📝 Dados do Dia Selecionado</span>
+                <button class="btn-reset" onclick="limparTudo()">🧹 Limpar Dia</button>
             </div>
             
             <div class="form-row">
-                <div class="form-group"><label>🎯 Objetivo</label><input type="number" id="objetivo" value="430" oninput="processar()"></div>
-                <div class="form-group"><label>📊 Produção Realizada</label><input type="text" id="prodRealizada" value="464 Turno A" oninput="processar()"></div>
+                <div class="form-group"><label>🎯 Objetivo (Meta)</label><input type="number" id="objetivo" value="430" oninput="processar()"></div>
+                <div class="form-group"><label>📊 Produção Realizada</label><input type="text" id="prodRealizada" value="500" oninput="processar()"></div>
             </div>
 
             <div class="form-row-3">
-                <div class="form-group"><label>🚗 Prod. SA6</label><input type="number" id="prodSA6" value="285" oninput="processar()"></div>
-                <div class="form-group"><label>🫧 Bolhas</label><input type="number" id="bolhas" value="73" oninput="processar()"></div>
-                <div class="form-group"><label>❌ Carros NOK</label><input type="number" id="carrosNOK" value="64" oninput="processar()"></div>
+                <div class="form-group"><label>🚗 Prod. SA6</label><input type="number" id="prodSA6" value="120" oninput="processar()"></div>
+                <div class="form-group"><label>🫧 Bolhas</label><input type="number" id="bolhas" value="52" oninput="processar()"></div>
+                <div class="form-group"><label>❌ Carros NOK</label><input type="number" id="carrosNOK" value="411" oninput="processar()"></div>
             </div>
 
             <div class="form-row">
-                <div class="form-group"><label>📲 Liberação Offline</label><input type="number" id="liberacaoOffline" value="0" oninput="processar()"></div>
-                <div class="form-group"><label>🔄 Reinspeção</label><input type="number" id="reinspecao" value="0" oninput="processar()"></div>
+                <div class="form-group"><label>📲 Liberação Offline</label><input type="number" id="liberacaoOffline" value="12" oninput="processar()"></div>
+                <div class="form-group"><label>🔄 Reinspeção</label><input type="number" id="reinspecao" value="12" oninput="processar()"></div>
+            </div>
+
+            <!-- NOVO CAMPO: REPAROS -->
+            <div class="form-row">
+                <div class="form-group" style="grid-column: span 2;"><label>🛠️ Reparos</label><input type="number" id="reparos" value="0" oninput="processar()"></div>
             </div>
 
             <div class="section-subtitle">🚨 TOP 3 Problemas</div>
             <div class="form-group">
                 <label>1️⃣ Primeiro Lugar</label>
                 <div class="form-row" style="grid-template-columns: 3fr 1fr;">
-                    <input type="text" id="top1_desc" value="SA6 : Infiltração na porta traseira direita ( classe A)" oninput="processar()">
+                    <input type="text" id="top1_desc" value="SA6 : Infiltração porta traseira direita" oninput="processar()">
                     <input type="number" id="top1_qtd" value="30" oninput="processar()">
                 </div>
             </div>
             <div class="form-group">
                 <label>2️⃣ Segundo Lugar</label>
                 <div class="form-row" style="grid-template-columns: 3fr 1fr;">
-                    <input type="text" id="top2_desc" value="SA6: Infiltração na porta esquerda frente ( classe A)" oninput="processar()">
+                    <input type="text" id="top2_desc" value="SA6: Infiltração porta esquerda frente" oninput="processar()">
                     <input type="number" id="top2_qtd" value="12" oninput="processar()">
                 </div>
             </div>
             <div class="form-group">
                 <label>3️⃣ Terceiro Lugar</label>
                 <div class="form-row" style="grid-template-columns: 3fr 1fr;">
-                    <input type="text" id="top3_desc" value="SA6 : Infiltração na porta esquerda traseira ( classe A)" oninput="processar()">
+                    <input type="text" id="top3_desc" value="SA6 : Infiltração porta esquerda traseira" oninput="processar()">
                     <input type="number" id="top3_qtd" value="6" oninput="processar()">
                 </div>
             </div>
 
             <div class="section-subtitle">⚠️ Ocorrência / Ação</div>
-            <div class="form-group"><label>Ocorrência</label><input type="text" id="ocorrencia" value="Desalinhamento de chapas do pisos causando tropeços." oninput="processar()"></div>
-            <div class="form-group"><label>Ação Tomada</label><input type="text" id="acao" value="Solicitado intervenção de manutenção." oninput="processar()"></div>
+            <div class="form-group"><label>Ocorrência</label><input type="text" id="ocorrencia" value="Desalinhamento de chapas." oninput="processar()"></div>
+            <div class="form-group"><label>Ação Tomada</label><input type="text" id="acao" value="Solicitado manutenção." oninput="processar()"></div>
 
             <div class="section-subtitle">🔍 Auditoria Teste Intensivo</div>
             <div id="container-auditoria"></div>
@@ -130,53 +176,69 @@
         </div>
     </div>
 
-    <div id="toast" class="toast">Texto copiado com sucesso!</div>
+    <!-- ABA 2: HISTÓRICO POR DATA -->
+    <div id="tab-historico" class="container">
+        <div class="card" style="grid-column: span 2;">
+            <div class="card-title">📈 Registros Salvos por Data</div>
+            <div style="overflow-x: auto;">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Meta</th>
+                            <th>Realizado</th>
+                            <th>SA6</th>
+                            <th>Bolhas</th>
+                            <th>NOK</th>
+                            <th>Lib. Offline</th>
+                            <th>Reparos</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-historico-corpo">
+                        <tr><td colspan="8" style="text-align: center; color: var(--text-muted);">Nenhum dado registrado.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 
-    <!-- INTEGRACAO COM O FIREBASE (TURNO-A) -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    <!-- ABA 3: EVOLUÇÃO SEMANAL E MENSAL -->
+    <div id="tab-evolucao" class="container">
+        <div class="card" style="grid-column: span 2;">
+            <div class="card-title">📊 Evolução Consolidada (Incluindo Sábados)</div>
+            <div class="kpi-grid" id="kpi-container-metrics">
+                <!-- Preenchido via JS -->
+            </div>
+        </div>
+    </div>
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyBeWssEdC-JzbigEEYFj7pE71V_wVf2_HY",
-            authDomain: "turno-a.firebaseapp.com",
-            projectId: "turno-a",
-            storageBucket: "turno-a.firebasestorage.app",
-            messagingSenderId: "508911260921",
-            appId: "1:508911260921:web:4252cf00547b17af207e28",
-            measurementId: "G-2DNL08Z86R"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        // Função global para salvar no Firebase Firestore
-        window.salvarNoFirebase = async function(dados) {
-            try {
-                await setDoc(doc(db, "reports", "turno_a_atual"), {
-                    ...dados,
-                    atualizadoEm: new Date().toISOString()
-                });
-            } catch (e) {
-                console.error("Erro ao salvar no Firebase:", e);
-            }
-        };
-
-        // Escutar alterações do Firebase em tempo real
-        onSnapshot(doc(db, "reports", "turno_a_atual"), (snapshot) => {
-            if (snapshot.exists()) {
-                const d = snapshot.data();
-                // Apenas carrega se o usuário não estiver editando no momento
-                if (!window.estaEditando) {
-                    window.preencherCamposComDados(d);
-                }
-            }
-        });
-    </script>
+    <div id="toast" class="toast">Operação realizada com sucesso!</div>
 
     <script>
-        const STORAGE_KEY = 'app_producao_infiltracao';
-        window.estaEditando = false;
+        const STORAGE_PREFIX = 'report_infiltracao_data_';
+        let dataAtual = '';
+
+        function inicializarDataHoje() {
+            const hoje = new Date().toISOString().split('T')[0];
+            document.getElementById('dataLancamento').value = hoje;
+            dataAtual = hoje;
+            carregarDadosData(dataAtual);
+        }
+
+        function mudarDataLancamento() {
+            dataAtual = document.getElementById('dataLancamento').value;
+            carregarDadosData(dataAtual);
+        }
+
+        function trocarAba(aba, event) {
+            document.querySelectorAll('.container').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-tabs .tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + aba).classList.add('active');
+            if(event && event.currentTarget) event.currentTarget.classList.add('active');
+
+            if (aba === 'historico') atualizarTabelaHistorico();
+            if (aba === 'evolucao') calcularEvolucaoSemanalMensal();
+        }
 
         function adicionarCampoAuditoria(val = '') {
             const container = document.getElementById('container-auditoria');
@@ -200,7 +262,7 @@
             const container = document.getElementById('container-obs');
             const row = document.createElement('div');
             row.className = 'dynamic-row';
-            row.innerHTML = `<input type="text" class="input-obs" value="${val}" placeholder="Ex: Digite a observação..." oninput="processar()"><button class="btn-remove" onclick="removerCampo(this)">✕</button>`;
+            row.innerHTML = `<input type="text" class="input-obs" value="${val}" placeholder="Ex: Observação..." oninput="processar()"><button class="btn-remove" onclick="removerCampo(this)">✕</button>`;
             container.appendChild(row);
             processar();
         }
@@ -209,13 +271,16 @@
 
         function extrairDadosFormulario() {
             return {
-                objetivo: document.getElementById('objetivo').value,
-                prodRealizada: document.getElementById('prodRealizada').value,
-                prodSA6: document.getElementById('prodSA6').value,
-                bolhas: document.getElementById('bolhas').value,
-                carrosNOK: document.getElementById('carrosNOK').value,
-                liberacaoOffline: document.getElementById('liberacaoOffline').value,
-                reinspecao: document.getElementById('reinspecao').value,
+                data: dataAtual,
+                objetivo: parseFloat(document.getElementById('objetivo').value) || 0,
+                prodRealizadaStr: document.getElementById('prodRealizada').value,
+                prodRealizadaNum: parseFloat(document.getElementById('prodRealizada').value) || 0,
+                prodSA6: parseFloat(document.getElementById('prodSA6').value) || 0,
+                bolhas: parseFloat(document.getElementById('bolhas').value) || 0,
+                carrosNOK: parseFloat(document.getElementById('carrosNOK').value) || 0,
+                liberacaoOffline: parseFloat(document.getElementById('liberacaoOffline').value) || 0,
+                reinspecao: parseFloat(document.getElementById('reinspecao').value) || 0,
+                reparos: parseFloat(document.getElementById('reparos').value) || 0,
                 top1_desc: document.getElementById('top1_desc').value,
                 top1_qtd: document.getElementById('top1_qtd').value,
                 top2_desc: document.getElementById('top2_desc').value,
@@ -231,81 +296,77 @@
         }
 
         function salvarMemoria() {
+            if (!dataAtual) return;
             const dados = extrairDadosFormulario();
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(dados));
-            if (typeof window.salvarNoFirebase === 'function') {
-                window.salvarNoFirebase(dados);
-            }
+            localStorage.setItem(STORAGE_PREFIX + dataAtual, JSON.stringify(dados));
         }
 
-        window.preencherCamposComDados = function(d) {
-            document.getElementById('objetivo').value = d.objetivo !== undefined ? d.objetivo : '';
-            document.getElementById('prodRealizada').value = d.prodRealizada !== undefined ? d.prodRealizada : '';
-            document.getElementById('prodSA6').value = d.prodSA6 !== undefined ? d.prodSA6 : '';
-            document.getElementById('bolhas').value = d.bolhas !== undefined ? d.bolhas : '';
-            document.getElementById('carrosNOK').value = d.carrosNOK !== undefined ? d.carrosNOK : '';
-            document.getElementById('liberacaoOffline').value = d.liberacaoOffline !== undefined ? d.liberacaoOffline : '0';
-            document.getElementById('reinspecao').value = d.reinspecao !== undefined ? d.reinspecao : '0';
-            document.getElementById('top1_desc').value = d.top1_desc !== undefined ? d.top1_desc : '';
-            document.getElementById('top1_qtd').value = d.top1_qtd !== undefined ? d.top1_qtd : '';
-            document.getElementById('top2_desc').value = d.top2_desc !== undefined ? d.top2_desc : '';
-            document.getElementById('top2_qtd').value = d.top2_qtd !== undefined ? d.top2_qtd : '';
-            document.getElementById('top3_desc').value = d.top3_desc !== undefined ? d.top3_desc : '';
-            document.getElementById('top3_qtd').value = d.top3_qtd !== undefined ? d.top3_qtd : '';
-            document.getElementById('ocorrencia').value = d.ocorrencia !== undefined ? d.ocorrencia : '';
-            document.getElementById('acao').value = d.acao !== undefined ? d.acao : '';
-
+        function carregarDadosData(dataStr) {
+            const salvo = localStorage.getItem(STORAGE_PREFIX + dataStr);
             document.getElementById('container-auditoria').innerHTML = '';
             document.getElementById('container-song').innerHTML = '';
             document.getElementById('container-obs').innerHTML = '';
 
-            if (d.auditoria) d.auditoria.forEach(v => adicionarCampoAuditoria(v));
-            if (d.song) d.song.forEach(v => adicionarCampoSong(v));
-            if (d.obs) d.obs.forEach(v => adicionarCampoObs(v));
-
-            const text = gerarTextoWhatsApp();
-            document.getElementById('preview').innerText = text;
-        };
-
-        function carregarMemoria() {
-            const dadosSalvos = localStorage.getItem(STORAGE_KEY);
-            if (!dadosSalvos) {
+            if (!salvo) {
+                document.getElementById('objetivo').value = 430;
+                document.getElementById('prodRealizada').value = 500;
+                document.getElementById('prodSA6').value = 120;
+                document.getElementById('bolhas').value = 52;
+                document.getElementById('carrosNOK').value = 411;
+                document.getElementById('liberacaoOffline').value = 12;
+                document.getElementById('reinspecao').value = 12;
+                document.getElementById('reparos').value = 0;
                 adicionarCampoAuditoria('VK072138 - OK');
                 adicionarCampoSong('SA6 - VK087991 - OK');
-                adicionarCampoSong('SA6 - VK085797 - OK');
-                adicionarCampoSong('SA6 - VK090586 - OK');
-                adicionarCampoObs('Baixo volume de carros na linha de chuva.');
-                return;
+                adicionarCampoObs('Baixo volume na linha.');
+            } else {
+                const d = JSON.parse(salvo);
+                document.getElementById('objetivo').value = d.objetivo;
+                document.getElementById('prodRealizada').value = d.prodRealizadaStr;
+                document.getElementById('prodSA6').value = d.prodSA6;
+                document.getElementById('bolhas').value = d.bolhas;
+                document.getElementById('carrosNOK').value = d.carrosNOK;
+                document.getElementById('liberacaoOffline').value = d.liberacaoOffline;
+                document.getElementById('reinspecao').value = d.reinspecao;
+                document.getElementById('reparos').value = d.reparos !== undefined ? d.reparos : 0;
+                document.getElementById('top1_desc').value = d.top1_desc;
+                document.getElementById('top1_qtd').value = d.top1_qtd;
+                document.getElementById('top2_desc').value = d.top2_desc;
+                document.getElementById('top2_qtd').value = d.top2_qtd;
+                document.getElementById('top3_desc').value = d.top3_desc;
+                document.getElementById('top3_qtd').value = d.top3_qtd;
+                document.getElementById('ocorrencia').value = d.ocorrencia;
+                document.getElementById('acao').value = d.acao;
+
+                if (d.auditoria) d.auditoria.forEach(v => adicionarCampoAuditoria(v));
+                if (d.song) d.song.forEach(v => adicionarCampoSong(v));
+                if (d.obs) d.obs.forEach(v => adicionarCampoObs(v));
             }
-            window.preencherCamposComDados(JSON.parse(dadosSalvos));
+            processar();
         }
 
         function processar() {
-            window.estaEditando = true;
             salvarMemoria();
-            const text = gerarTextoWhatsApp();
-            document.getElementById('preview').innerText = text;
-            setTimeout(() => { window.estaEditando = false; }, 2000);
+            document.getElementById('preview').innerText = gerarTextoWhatsApp();
         }
 
         function gerarTextoWhatsApp() {
             const d = extrairDadosFormulario();
-
             const auditoria = d.auditoria.map(v => v.trim()).filter(v => v).join('\n');
             const song = d.song.map(v => v.trim()).filter(v => v).join('\n');
+            let cnt = 1;
+            const obs = d.obs.map(v => v.trim()).filter(v => v).map(v => `• Obs ${cnt++}: ${v}`).join('\n');
 
-            let contadorObs = 1;
-            const obs = d.obs.map(v => v.trim()).filter(v => v).map(v => `• Obs ${contadorObs++}: ${v}`).join('\n');
-
-            let text = `📋 REPORT DIÁRIO LINHA DE INFILTRAÇÃO
+            let text = `📋 REPORT DIÁRIO INFILTRAÇÃO (${formatarDataBR(d.data)})
 
 🎯 Objetivo: ${d.objetivo}
-📊 Produção realizada: ${d.prodRealizada}
+📊 Produção realizada: ${d.prodRealizadaStr}
 🚗 Produção de SA6: ${d.prodSA6}
 🫧 Bolhas: ${d.bolhas}
 ❌ Carros NOK: ${d.carrosNOK}
 📲 Liberação Offline: ${d.liberacaoOffline}
 🔄 Reinspeção: ${d.reinspecao}
+🛠️ Reparos: ${d.reparos}
 
 🚨 TOP 3 PROBLEMAS DETECTADOS
 1️⃣ ${d.top1_desc}${d.top1_qtd ? ' - ' + String(d.top1_qtd).padStart(2, '0') : ''}
@@ -322,75 +383,209 @@
             return text;
         }
 
+        function formatarDataBR(iso) {
+            if(!iso) return '';
+            const p = iso.split('-');
+            return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : iso;
+        }
+
         function limparTudo() {
-            if (confirm("Deseja realmente limpar todos os campos do turno atual?")) {
-                localStorage.removeItem(STORAGE_KEY);
-
-                const inputsNumericos = document.querySelectorAll('input[type="number"]');
-                inputsNumericos.forEach(input => input.value = 0);
-
-                const inputsTexto = document.querySelectorAll('input[type="text"]:not(.input-auditoria):not(.input-song):not(.input-obs)');
-                inputsTexto.forEach(input => input.value = '');
-
-                document.getElementById('container-auditoria').innerHTML = '';
-                document.getElementById('container-song').innerHTML = '';
-                document.getElementById('container-obs').innerHTML = '';
-
-                processar();
+            if (confirm("Deseja limpar os dados desta data?")) {
+                localStorage.removeItem(STORAGE_PREFIX + dataAtual);
+                carregarDadosData(dataAtual);
             }
+        }
+
+        function obterTodosRegistros() {
+            let registros = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith(STORAGE_PREFIX)) {
+                    try {
+                        const item = JSON.parse(localStorage.getItem(key));
+                        if(item && item.data) registros.push(item);
+                    } catch(e){}
+                }
+            }
+            return registros.sort((a,b) => new Date(a.data) - new Date(b.data));
+        }
+
+        function atualizarTabelaHistorico() {
+            const corpo = document.getElementById('tabela-historico-corpo');
+            const regs = obterTodosRegistros();
+            if (regs.length === 0) {
+                corpo.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted);">Nenhum dado cadastrado.</td></tr>`;
+                return;
+            }
+            corpo.innerHTML = '';
+            regs.slice().reverse().forEach(r => {
+                corpo.innerHTML += `<tr>
+                    <td><span class="badge-date">${formatarDataBR(r.data)}</span></td>
+                    <td>${r.objetivo}</td>
+                    <td><b>${r.prodRealizadaStr}</b></td>
+                    <td>${r.prodSA6}</td>
+                    <td>${r.bolhas}</td>
+                    <td>${r.carrosNOK}</td>
+                    <td>${r.liberacaoOffline}</td>
+                    <td>${r.reparos || 0}</td>
+                </tr>`;
+            });
+        }
+
+        function calcularEvolucaoSemanalMensal() {
+            const regs = obterTodosRegistros();
+            const container = document.getElementById('kpi-container-metrics');
+            if (regs.length === 0) {
+                container.innerHTML = `<p style="color:var(--text-muted)">Sem dados suficientes para cálculo.</p>`;
+                return;
+            }
+
+            let totalProdMes = 0;
+            let totalMetaMes = 0;
+            let totalBolhasMes = 0;
+            let totalNokMes = 0;
+            let totalLibOfflineMes = 0;
+            let totalReparosMes = 0;
+
+            const hoje = new Date();
+            let totalProdSemana = 0;
+            let totalMetaSemana = 0;
+
+            regs.forEach(r => {
+                const dItem = new Date(r.data + 'T00:00:00');
+                totalProdMes += r.prodRealizadaNum;
+                totalMetaMes += r.objetivo;
+                totalBolhasMes += r.bolhas;
+                totalNokMes += r.carrosNOK;
+                totalLibOfflineMes += r.liberacaoOffline || 0;
+                totalReparosMes += r.reparos || 0;
+
+                const diffTime = Math.abs(hoje - dItem);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                if (diffDays <= 7) {
+                    totalProdSemana += r.prodRealizadaNum;
+                    totalMetaSemana += r.objetivo;
+                }
+            });
+
+            container.innerHTML = `
+                <div class="kpi-card">
+                    <h4>📅 Acumulado do Mês (Produção)</h4>
+                    <div class="val">${totalProdMes} carros</div>
+                </div>
+                <div class="kpi-card" style="border-left-color: var(--accent-amber)">
+                    <h4>🎯 Meta Acumulada do Mês</h4>
+                    <div class="val">${totalMetaMes} carros</div>
+                </div>
+                <div class="kpi-card" style="border-left-color: var(--accent-green)">
+                    <h4>📈 Produtividade Semanal (últimos 7 dias / c/ Sábado)</h4>
+                    <div class="val">${totalProdSemana} / Meta: ${totalMetaSemana}</div>
+                </div>
+                <div class="kpi-card" style="border-left-color: #ef4444">
+                    <h4>🫧 Total Bolhas / NOK no Mês</h4>
+                    <div class="val">${totalBolhasMes} Bolhas / ${totalNokMes} NOK</div>
+                </div>
+                <div class="kpi-card" style="border-left-color: #3b82f6">
+                    <h4>📲 Total Lib. Offline / 🛠️ Reparos no Mês</h4>
+                    <div class="val">${totalLibOfflineMes} Off / ${totalReparosMes} Reparos</div>
+                </div>
+            `;
+        }
+
+        // EXPORTAR PARA EXCEL (Sem Ocorrência e Ação, com Data Brasileira e novos campos)
+        function exportarExcel() {
+            const regs = obterTodosRegistros();
+            if(regs.length === 0) { alert("Não há dados para exportar."); return; }
+            
+            const dadosPlanilha = regs.map(r => ({
+                "Data": formatarDataBR(r.data),
+                "Objetivo (Meta)": r.objetivo,
+                "Produção Realizada": r.prodRealizadaStr,
+                "Produção SA6": r.prodSA6,
+                "Bolhas": r.bolhas,
+                "Carros NOK": r.carrosNOK,
+                "Liberação Offline": r.liberacaoOffline,
+                "Reinspeção": r.reinspecao,
+                "Reparos": r.reparos || 0
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(dadosPlanilha);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Evolucao Infiltracao");
+            XLSX.writeFile(workbook, "report_infiltracao_evolucao.xlsx");
+        }
+
+        // IMPORTAR DE EXCEL
+        function importarExcel(event) {
+            const file = event.target.files[0];
+            if(!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const json = XLSX.utils.sheet_to_json(worksheet);
+
+                    json.forEach(row => {
+                        let dt = row["Data"];
+                        if (dt) {
+                            if (dt.includes('/')) {
+                                const partes = dt.split('/');
+                                if (partes.length === 3) {
+                                    dt = `${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
+                                }
+                            }
+
+                            const objFormatado = {
+                                data: dt,
+                                objetivo: row["Objetivo (Meta)"] || 430,
+                                prodRealizadaStr: String(row["Produção Realizada"] || "0"),
+                                prodRealizadaNum: parseFloat(row["Produção Realizada"]) || 0,
+                                prodSA6: row["Produção SA6"] || 0,
+                                bolhas: row["Bolhas"] || 0,
+                                carrosNOK: row["Carros NOK"] || 0,
+                                liberacaoOffline: row["Liberação Offline"] || 0,
+                                reinspecao: row["Reinspeção"] || 0,
+                                reparos: row["Reparos"] || 0,
+                                top1_desc: "", top1_qtd: "",
+                                top2_desc: "", top2_qtd: "",
+                                top3_desc: "", top3_qtd: "",
+                                ocorrencia: "",
+                                acao: "",
+                                auditoria: [], song: [], obs: []
+                            };
+                            localStorage.setItem(STORAGE_PREFIX + dt, JSON.stringify(objFormatado));
+                        }
+                    });
+
+                    alert("Planilha importada com sucesso!");
+                    carregarDadosData(dataAtual);
+                } catch(err) {
+                    alert("Erro ao ler o arquivo Excel. Verifique o formato.");
+                    console.error(err);
+                }
+            };
+            reader.readAsArrayBuffer(file);
         }
 
         function copiarTexto() {
-            const texto = gerarTextoWhatsApp();
-
-            if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(texto)
-                    .then(() => exibirToast())
-                    .catch(() => copiarFallback(texto));
-            } else {
-                copiarFallback(texto);
-            }
-        }
-
-        function copiarFallback(texto) {
-            try {
-                const textArea = document.createElement("textarea");
-                textArea.value = texto;
-                
-                textArea.style.position = "fixed";
-                textArea.style.left = "-999999px";
-                textArea.style.top = "-999999px";
-                document.body.appendChild(textArea);
-                
-                textArea.focus();
-                textArea.select();
-
-                const executado = document.execCommand('copy');
-                document.body.removeChild(textArea);
-
-                if (executado) {
-                    exibirToast();
-                } else {
-                    alert("Não foi possível copiar automaticamente. Selecione e copie o texto manualmente.");
-                }
-            } catch (err) {
-                alert("Erro ao tentar copiar o texto.");
-            }
+            navigator.clipboard.writeText(gerarTextoWhatsApp()).then(() => exibirToast());
         }
 
         function exibirToast() {
             const toast = document.getElementById('toast');
             toast.style.display = 'block';
-            setTimeout(() => {
-                toast.style.display = 'none';
-            }, 2000);
+            setTimeout(() => { toast.style.display = 'none'; }, 2000);
         }
 
         function enviarWhatsApp() {
             window.open("https://api.whatsapp.com/send?text=" + encodeURIComponent(gerarTextoWhatsApp()), '_blank');
         }
 
-        window.onload = carregarMemoria;
+        window.onload = inicializarDataHoje;
     </script>
 </body>
 </html>
