@@ -8,69 +8,96 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         :root {
-            --bg-primary: #0f172a;
-            --bg-card: #1e293b;
-            --bg-input: #334155;
+            --bg-primary: #0b1329;
+            --bg-card: #111c38;
+            --bg-input: #1e293b;
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
-            --accent-green: #10b981;
-            --accent-blue: #3b82f6;
-            --accent-amber: #f59e0b;
-            --border-color: #475569;
+            --accent-green: #059669;
+            --accent-blue: #2563eb;
+            --accent-amber: #d97706;
+            --border-color: #334155;
+            --radius-lg: 12px;
+            --radius-md: 8px;
+            --shadow-card: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        body { background-color: var(--bg-primary); color: var(--text-main); padding: 24px 16px; min-height: 100vh; }
-        .header { max-width: 1200px; margin: 0 auto 20px auto; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border-color); padding-bottom: 16px; flex-wrap: wrap; gap: 15px; }
-        .header h1 { font-size: 1.5rem; color: var(--text-main); }
+        body { background-color: var(--bg-primary); color: var(--text-main); padding: 30px 20px; min-height: 100vh; }
+        
+        .header { max-width: 1280px; margin: 0 auto 24px auto; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 20px; flex-wrap: wrap; gap: 15px; }
+        .header h1 { font-size: 1.6rem; font-weight: 700; color: var(--text-main); letter-spacing: -0.5px; }
         .header .subtitle { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; }
         
-        .date-selector-box { display: flex; align-items: center; gap: 10px; background: var(--bg-card); padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border-color); }
-        .date-selector-box label { font-size: 0.8rem; color: var(--accent-amber); font-weight: bold; margin-bottom: 0; }
-        .date-selector-box input[type="date"] { background: var(--bg-input); color: #fff; border: 1px solid var(--border-color); padding: 6px 10px; border-radius: 6px; font-size: 0.9rem; cursor: pointer; }
+        .date-selector-box { display: flex; align-items: center; gap: 12px; background: var(--bg-card); padding: 10px 18px; border-radius: var(--radius-md); border: 1px solid var(--border-color); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .date-selector-box label { font-size: 0.8rem; color: var(--accent-amber); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .date-selector-box input[type="date"] { background: var(--bg-input); color: #fff; border: 1px solid var(--border-color); padding: 8px 12px; border-radius: 6px; font-size: 0.9rem; cursor: pointer; font-weight: 600; outline: none; }
 
-        .nav-tabs { max-width: 1200px; margin: 0 auto 20px auto; display: flex; gap: 10px; flex-wrap: wrap; }
-        .tab-btn { background-color: var(--bg-card); color: var(--text-muted); border: 1px solid var(--border-color); padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; }
-        .tab-btn.active { background-color: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
+        .nav-tabs { max-width: 1280px; margin: 0 auto 24px auto; display: flex; gap: 10px; flex-wrap: wrap; }
+        .tab-btn { background-color: var(--bg-card); color: var(--text-muted); border: 1px solid var(--border-color); padding: 12px 22px; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; transition: all 0.2s ease; font-size: 0.9rem; }
+        .tab-btn:hover { border-color: var(--text-muted); color: #fff; }
+        .tab-btn.active { background-color: var(--accent-blue); color: #fff; border-color: var(--accent-blue); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); }
 
-        .container { max-width: 1200px; margin: 0 auto; display: none; grid-template-columns: 1fr 1fr; gap: 24px; }
+        .container { max-width: 1280px; margin: 0 auto; display: none; grid-template-columns: 1fr 1fr; gap: 24px; }
         .container.active { display: grid; }
         .container#tab-historico.active, .container#tab-evolucao.active { display: block; }
 
-        @media (max-width: 900px) { .container.active { grid-template-columns: 1fr; } }
+        @media (max-width: 1024px) { .container.active { grid-template-columns: 1fr; } }
         
-        .card { background-color: var(--bg-card); border-radius: 12px; padding: 20px; border: 1px solid var(--border-color); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); margin-bottom: 20px; }
-        .card-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 16px; color: var(--accent-blue); border-bottom: 1px solid var(--border-color); padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
-        .form-group { margin-bottom: 14px; }
-        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
-        label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; font-weight: 500; }
-        input[type="text"], input[type="number"] { width: 100%; padding: 10px 12px; background-color: var(--bg-input); border: 1px solid var(--border-color); border-radius: 6px; color: #ffffff; font-size: 0.95rem; }
-        input:focus { outline: none; border-color: var(--accent-blue); }
-        .dynamic-row { display: flex; gap: 8px; margin-bottom: 8px; }
-        .dynamic-row input { flex: 1; }
-        .btn-remove { background-color: #ef4444; color: white; border: none; border-radius: 6px; padding: 0 12px; cursor: pointer; font-weight: bold; }
-        .btn-add { background-color: #3b82f6; color: white; border: none; border-radius: 6px; padding: 8px 12px; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; margin-bottom: 12px; }
-        .btn-reset { background-color: #ef4444; color: white; border: none; border-radius: 6px; padding: 6px 12px; font-size: 0.8rem; font-weight: bold; cursor: pointer; }
-        .section-subtitle { font-size: 0.9rem; font-weight: 600; color: var(--accent-amber); margin: 16px 0 10px 0; text-transform: uppercase; letter-spacing: 0.5px; }
-        .preview-box { background-color: #0b141a; border-radius: 8px; padding: 16px; font-family: "Segoe UI", -apple-system, sans-serif; white-space: pre-wrap; word-break: break-word; font-size: 0.92rem; line-height: 1.5; color: #e9edef; border-left: 4px solid var(--accent-green); min-height: 420px; max-height: 600px; overflow-y: auto; }
-        .btn-group { display: flex; gap: 12px; margin-top: 16px; }
-        .btn { flex: 1; padding: 12px 18px; border: none; border-radius: 8px; font-weight: 600; font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .btn-success { background-color: #25d366; color: #000; }
+        .card { background-color: var(--bg-card); border-radius: var(--radius-lg); padding: 24px; border: 1px solid var(--border-color); box-shadow: var(--shadow-card); margin-bottom: 24px; }
+        .card-title { font-size: 1.15rem; font-weight: 700; margin-bottom: 20px; color: var(--text-main); border-bottom: 1px solid var(--border-color); padding-bottom: 12px; display: flex; justify-content: space-between; align-items: center; letter-spacing: -0.3px; }
+        
+        .form-group { margin-bottom: 16px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+        label { display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 6px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        input[type="text"], input[type="number"], select { width: 100%; padding: 11px 14px; background-color: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-md); color: #ffffff; font-size: 0.95rem; font-weight: 500; transition: border-color 0.2s; }
+        input:focus, select:focus { outline: none; border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); }
+        
+        .dynamic-row { background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 10px; border-radius: var(--radius-md); margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px; }
+        .dynamic-inputs { display: flex; gap: 8px; align-items: center; }
+        .dynamic-inputs input { flex: 2; }
+        .dynamic-inputs select { flex: 1; }
+        .dynamic-inputs button { flex: 0; }
+        .problema-input { display: none; width: 100%; }
+
+        .btn-remove { background-color: #dc2626; color: white; border: none; border-radius: var(--radius-md); padding: 0 14px; height: 43px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
+        .btn-remove:hover { background-color: #b91c1c; }
+        
+        .btn-add { background-color: var(--accent-blue); color: white; border: none; border-radius: var(--radius-md); padding: 9px 14px; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; margin-bottom: 16px; transition: background 0.2s; }
+        .btn-add:hover { background-color: #1d4ed8; }
+        
+        .btn-reset { background-color: #dc2626; color: white; border: none; border-radius: 6px; padding: 6px 12px; font-size: 0.8rem; font-weight: bold; cursor: pointer; }
+        .btn-reset:hover { background-color: #b91c1c; }
+        
+        .btn-salvar-dia { background-color: var(--accent-green); color: #fff; font-size: 1rem; font-weight: 700; width: 100%; padding: 14px; border: none; border-radius: var(--radius-md); cursor: pointer; margin-top: 20px; transition: opacity 0.2s, box-shadow 0.2s; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3); }
+        .btn-salvar-dia:hover { opacity: 0.95; box-shadow: 0 6px 16px rgba(5, 150, 105, 0.4); }
+
+        .section-subtitle { font-size: 0.85rem; font-weight: 700; color: var(--accent-amber); margin: 20px 0 12px 0; text-transform: uppercase; letter-spacing: 0.8px; }
+        
+        .preview-box { background-color: #070d1d; border-radius: var(--radius-md); padding: 18px; font-family: "Segoe UI", -apple-system, sans-serif; white-space: pre-wrap; word-break: break-word; font-size: 0.9rem; line-height: 1.6; color: #e2e8f0; border-left: 4px solid var(--accent-green); min-height: 440px; max-height: 620px; overflow-y: auto; border: 1px solid var(--border-color); }
+        
+        .btn-group { display: flex; gap: 12px; margin-top: 20px; }
+        .btn { flex: 1; padding: 12px 18px; border: none; border-radius: var(--radius-md); font-weight: 600; font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: opacity 0.2s; }
+        .btn:hover { opacity: 0.9; }
+        .btn-success { background-color: #16a34a; color: #fff; }
         .btn-secondary { background-color: var(--accent-blue); color: #fff; }
-        .btn-excel { background-color: #10b981; color: #000; }
-        .toast { position: fixed; bottom: 20px; right: 20px; background-color: var(--accent-green); color: #000; padding: 12px 24px; border-radius: 8px; font-weight: bold; display: none; z-index: 1000; }
+        .btn-excel { background-color: #059669; color: #fff; font-weight: 600; }
+        .toast { position: fixed; bottom: 24px; right: 24px; background-color: var(--accent-green); color: #fff; padding: 14px 24px; border-radius: var(--radius-md); font-weight: bold; display: none; z-index: 1000; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); }
         
-        .history-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
-        .history-table th, .history-table td { border: 1px solid var(--border-color); padding: 10px 12px; text-align: left; }
-        .history-table th { background-color: var(--bg-input); color: var(--text-main); }
-        .history-table tr:hover { background-color: rgba(59, 130, 246, 0.05); }
-        .badge-date { background-color: var(--accent-amber); color: #000; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
+        .history-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 0.9rem; }
+        .history-table th, .history-table td { border: 1px solid var(--border-color); padding: 12px 14px; text-align: left; }
+        .history-table th { background-color: var(--bg-input); color: var(--text-main); font-weight: 700; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; }
+        .history-table tr:hover { background-color: rgba(59, 130, 246, 0.04); }
+        .badge-date { background-color: var(--accent-amber); color: #000; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; }
         
-        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px; }
-        .kpi-card { background: var(--bg-input); padding: 16px; border-radius: 8px; border-left: 4px solid var(--accent-blue); }
-        .kpi-card h4 { font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px; }
-        .kpi-card .val { font-size: 1.4rem; font-weight: bold; color: #fff; }
+        .filter-panel { background: var(--bg-input); padding: 20px; border-radius: var(--radius-md); margin-bottom: 24px; border: 1px solid var(--border-color); display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; align-items: flex-end; }
+        .filter-panel .form-group { margin-bottom: 0; }
+        
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; margin-top: 10px; }
+        .kpi-card { background: var(--bg-input); padding: 20px; border-radius: var(--radius-md); border: 1px solid var(--border-color); border-left: 5px solid var(--accent-blue); position: relative; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .kpi-card h4 { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; font-weight: 700; letter-spacing: 0.8px; }
+        .kpi-card .val { font-size: 1.5rem; font-weight: 800; color: #fff; letter-spacing: -0.5px; }
     </style>
 </head>
 <body>
@@ -81,7 +108,7 @@
             <div class="subtitle">Controle de Produção, Metas, Liberação Offline e Reparos</div>
         </div>
         <div class="date-selector-box">
-            <label for="dataLancamento">📅 Data do Lançamento:</label>
+            <label for="dataLancamento">📅 Data de Lançamento:</label>
             <input type="date" id="dataLancamento" onchange="mudarDataLancamento()">
         </div>
     </div>
@@ -89,9 +116,9 @@
     <div class="nav-tabs">
         <button class="tab-btn active" onclick="trocarAba('editor', event)">✏️ Edição & Report</button>
         <button class="tab-btn" onclick="trocarAba('historico', event)">📈 Histórico por Data</button>
-        <button class="tab-btn" onclick="trocarAba('evolucao', event)">📊 Evolução Semanal & Mensal</button>
+        <button class="tab-btn" onclick="trocarAba('evolucao', event)">📊 Evolução & Indicadores</button>
         <button class="tab-btn btn-excel" onclick="exportarExcel()" style="margin-left:auto;">📥 Exportar Excel</button>
-        <button class="tab-btn" style="background:#8b5cf6; color:#fff; border-color:#7c3aed;" onclick="document.getElementById('importFile').click()">📤 Importar Excel</button>
+        <button class="tab-btn" style="background:#7c3aed; color:#fff; border-color:#6d28d9;" onclick="document.getElementById('importFile').click()">📤 Importar Excel</button>
         <input type="file" id="importFile" accept=".xlsx, .xls, .csv" style="display:none" onchange="importarExcel(event)">
     </div>
 
@@ -104,64 +131,62 @@
             </div>
             
             <div class="form-row">
-                <div class="form-group"><label>🎯 Objetivo (Meta)</label><input type="number" id="objetivo" value="430" oninput="processar()"></div>
-                <div class="form-group"><label>📊 Produção Realizada</label><input type="text" id="prodRealizada" value="500" oninput="processar()"></div>
+                <div class="form-group"><label>🎯 Objetivo (Meta) *</label><input type="number" id="objetivo" placeholder="Ex: 430"></div>
+                <div class="form-group"><label>📊 Produção Realizada *</label><input type="text" id="prodRealizada" placeholder="Ex: 500"></div>
             </div>
 
             <div class="form-row-3">
-                <div class="form-group"><label>🚗 Prod. SA6</label><input type="number" id="prodSA6" value="120" oninput="processar()"></div>
-                <div class="form-group"><label>🫧 Bolhas</label><input type="number" id="bolhas" value="52" oninput="processar()"></div>
-                <div class="form-group"><label>❌ Carros NOK</label><input type="number" id="carrosNOK" value="411" oninput="processar()"></div>
+                <div class="form-group"><label>🚗 Prod. SA6 *</label><input type="number" id="prodSA6" placeholder="0"></div>
+                <div class="form-group"><label>🫧 Bolhas *</label><input type="number" id="bolhas" placeholder="0"></div>
+                <div class="form-group"><label>❌ Carros NOK *</label><input type="number" id="carrosNOK" placeholder="0"></div>
             </div>
 
             <div class="form-row">
-                <div class="form-group"><label>📲 Liberação Offline</label><input type="number" id="liberacaoOffline" value="12" oninput="processar()"></div>
-                <div class="form-group"><label>🔄 Reinspeção</label><input type="number" id="reinspecao" value="12" oninput="processar()"></div>
+                <div class="form-group"><label>📲 Liberação Offline</label><input type="number" id="liberacaoOffline" value="0"></div>
+                <div class="form-group"><label>🔄 Reinspeção</label><input type="number" id="reinspecao" value="0"></div>
             </div>
 
-            <!-- NOVO CAMPO: REPAROS -->
             <div class="form-row">
-                <div class="form-group" style="grid-column: span 2;"><label>🛠️ Reparos</label><input type="number" id="reparos" value="0" oninput="processar()"></div>
+                <div class="form-group" style="grid-column: span 2;"><label>🛠️ Reparos</label><input type="number" id="reparos" value="0"></div>
             </div>
 
             <div class="section-subtitle">🚨 TOP 3 Problemas</div>
             <div class="form-group">
                 <label>1️⃣ Primeiro Lugar</label>
                 <div class="form-row" style="grid-template-columns: 3fr 1fr;">
-                    <input type="text" id="top1_desc" value="SA6 : Infiltração porta traseira direita" oninput="processar()">
-                    <input type="number" id="top1_qtd" value="30" oninput="processar()">
+                    <input type="text" id="top1_desc" placeholder="Descrição do problema 1">
+                    <input type="number" id="top1_qtd" placeholder="Qtd">
                 </div>
             </div>
             <div class="form-group">
                 <label>2️⃣ Segundo Lugar</label>
                 <div class="form-row" style="grid-template-columns: 3fr 1fr;">
-                    <input type="text" id="top2_desc" value="SA6: Infiltração porta esquerda frente" oninput="processar()">
-                    <input type="number" id="top2_qtd" value="12" oninput="processar()">
+                    <input type="text" id="top2_desc" placeholder="Descrição do problema 2">
+                    <input type="number" id="top2_qtd" placeholder="Qtd">
                 </div>
             </div>
             <div class="form-group">
                 <label>3️⃣ Terceiro Lugar</label>
                 <div class="form-row" style="grid-template-columns: 3fr 1fr;">
-                    <input type="text" id="top3_desc" value="SA6 : Infiltração porta esquerda traseira" oninput="processar()">
-                    <input type="number" id="top3_qtd" value="6" oninput="processar()">
+                    <input type="text" id="top3_desc" placeholder="Descrição do problema 3">
+                    <input type="number" id="top3_qtd" placeholder="Qtd">
                 </div>
             </div>
 
             <div class="section-subtitle">⚠️ Ocorrência / Ação</div>
-            <div class="form-group"><label>Ocorrência</label><input type="text" id="ocorrencia" value="Desalinhamento de chapas." oninput="processar()"></div>
-            <div class="form-group"><label>Ação Tomada</label><input type="text" id="acao" value="Solicitado manutenção." oninput="processar()"></div>
+            <div class="form-group"><label>Ocorrência</label><input type="text" id="ocorrencia" placeholder="Descreva a ocorrência..."></div>
+            <div class="form-group"><label>Ação Tomada</label><input type="text" id="acao" placeholder="Descreva a ação..."></div>
 
+            <!-- AUDITORIA TESTE INTENSIVO COM STATUS OK/NOK E CAMPO DE PROBLEMA -->
             <div class="section-subtitle">🔍 Auditoria Teste Intensivo</div>
             <div id="container-auditoria"></div>
             <button class="btn-add" onclick="adicionarCampoAuditoria()">➕ Adicionar Carro Auditoria</button>
 
-            <div class="section-subtitle">⏱️ SONG SA6 30 Minutos</div>
-            <div id="container-song"></div>
-            <button class="btn-add" onclick="adicionarCampoSong()">➕ Adicionar Carro SONG SA6</button>
-
             <div class="section-subtitle">📝 Observações Gerais</div>
             <div id="container-obs"></div>
             <button class="btn-add" onclick="adicionarCampoObs()">➕ Adicionar Observação</button>
+
+            <button class="btn-salvar-dia" onclick="salvarDadosDoDia()">💾 Salvar / Atualizar Dados do Dia</button>
         </div>
 
         <div>
@@ -202,10 +227,35 @@
         </div>
     </div>
 
-    <!-- ABA 3: EVOLUÇÃO SEMANAL E MENSAL -->
+    <!-- ABA 3: EVOLUÇÃO E FILTROS EXECUTIVOS -->
     <div id="tab-evolucao" class="container">
         <div class="card" style="grid-column: span 2;">
-            <div class="card-title">📊 Evolução Consolidada (Incluindo Sábados)</div>
+            <div class="card-title">📊 Painel Executivo de Evolução & Desempenho</div>
+            
+            <div class="filter-panel">
+                <div class="form-group">
+                    <label>🔍 Critério de Período:</label>
+                    <select id="tipoFiltro" onchange="mudarTipoFiltro()">
+                        <option value="dia">Dia Específico</option>
+                        <option value="semana">Últimos 7 Dias (c/ Sábado)</option>
+                        <option value="mes">Mês Completo</option>
+                        <option value="personalizado">Intervalo Personalizado</option>
+                    </select>
+                </div>
+                <div class="form-group" id="boxDataUnica">
+                    <label>📅 Data de Referência:</label>
+                    <input type="date" id="filtroDataUnica" onchange="calcularEvolucaoPersonalizada()">
+                </div>
+                <div class="form-group" id="boxDataInicio" style="display:none;">
+                    <label>📅 Data Início:</label>
+                    <input type="date" id="filtroDataInicio" onchange="calcularEvolucaoPersonalizada()">
+                </div>
+                <div class="form-group" id="boxDataFim" style="display:none;">
+                    <label>📅 Data Fim:</label>
+                    <input type="date" id="filtroDataFim" onchange="calcularEvolucaoPersonalizada()">
+                </div>
+            </div>
+
             <div class="kpi-grid" id="kpi-container-metrics">
                 <!-- Preenchido via JS -->
             </div>
@@ -221,6 +271,9 @@
         function inicializarDataHoje() {
             const hoje = new Date().toISOString().split('T')[0];
             document.getElementById('dataLancamento').value = hoje;
+            document.getElementById('filtroDataUnica').value = hoje;
+            document.getElementById('filtroDataInicio').value = hoje;
+            document.getElementById('filtroDataFim').value = hoje;
             dataAtual = hoje;
             carregarDadosData(dataAtual);
         }
@@ -237,39 +290,81 @@
             if(event && event.currentTarget) event.currentTarget.classList.add('active');
 
             if (aba === 'historico') atualizarTabelaHistorico();
-            if (aba === 'evolucao') calcularEvolucaoSemanalMensal();
+            if (aba === 'evolucao') calcularEvolucaoPersonalizada();
         }
 
-        function adicionarCampoAuditoria(val = '') {
+        function mudarTipoFiltro() {
+            const tipo = document.getElementById('tipoFiltro').value;
+            document.getElementById('boxDataUnica').style.display = (tipo === 'dia' || tipo === 'mes') ? 'block' : 'none';
+            document.getElementById('boxDataInicio').style.display = (tipo === 'personalizado') ? 'block' : 'none';
+            document.getElementById('boxDataFim').style.display = (tipo === 'personalizado') ? 'block' : 'none';
+            calcularEvolucaoPersonalizada();
+        }
+
+        function adicionarCampoAuditoria(veiculoVal = '', statusVal = 'OK', problemaVal = '') {
             const container = document.getElementById('container-auditoria');
             const row = document.createElement('div');
             row.className = 'dynamic-row';
-            row.innerHTML = `<input type="text" class="input-auditoria" value="${val}" placeholder="Ex: VK072138 - OK" oninput="processar()"><button class="btn-remove" onclick="removerCampo(this)">✕</button>`;
+            
+            const displayProblema = statusVal === 'NOK' ? 'block' : 'none';
+
+            row.innerHTML = `
+                <div class="dynamic-inputs">
+                    <input type="text" class="input-auditoria-veiculo" value="${veiculoVal}" placeholder="Ex: Chassi / VIN" oninput="atualizarPreview()">
+                    <select class="input-auditoria-status" onchange="tratarMudancaStatus(this); atualizarPreview()">
+                        <option value="OK" ${statusVal === 'OK' ? 'selected' : ''}>OK</option>
+                        <option value="NOK" ${statusVal === 'NOK' ? 'selected' : ''}>NOK</option>
+                    </select>
+                    <button class="btn-remove" onclick="removerCampo(this); atualizarPreview()">✕</button>
+                </div>
+                <input type="text" class="problema-input input-auditoria-problema" value="${problemaVal}" placeholder="Descreva o problema encontrado (NOK)..." style="display: ${displayProblema};" oninput="atualizarPreview()">
+            `;
             container.appendChild(row);
-            processar();
         }
 
-        function adicionarCampoSong(val = '') {
-            const container = document.getElementById('container-song');
-            const row = document.createElement('div');
-            row.className = 'dynamic-row';
-            row.innerHTML = `<input type="text" class="input-song" value="${val}" placeholder="Ex: SA6 - VK087991 - OK" oninput="processar()"><button class="btn-remove" onclick="removerCampo(this)">✕</button>`;
-            container.appendChild(row);
-            processar();
+        function tratarMudancaStatus(selectEl) {
+            const row = selectEl.closest('.dynamic-row');
+            const problemaInput = row.querySelector('.problema-input');
+            if (selectEl.value === 'NOK') {
+                problemaInput.style.display = 'block';
+            } else {
+                problemaInput.style.display = 'none';
+                problemaInput.value = '';
+            }
         }
 
         function adicionarCampoObs(val = '') {
             const container = document.getElementById('container-obs');
             const row = document.createElement('div');
             row.className = 'dynamic-row';
-            row.innerHTML = `<input type="text" class="input-obs" value="${val}" placeholder="Ex: Observação..." oninput="processar()"><button class="btn-remove" onclick="removerCampo(this)">✕</button>`;
+            row.innerHTML = `
+                <div class="dynamic-inputs">
+                    <input type="text" class="input-obs" value="${val}" placeholder="Ex: Observação..." oninput="atualizarPreview()">
+                    <button class="btn-remove" onclick="removerCampo(this); atualizarPreview()">✕</button>
+                </div>
+            `;
             container.appendChild(row);
-            processar();
+            atualizarPreview();
         }
 
-        function removerCampo(btn) { btn.parentElement.remove(); processar(); }
+        function removerCampo(btn) { btn.closest('.dynamic-row').remove(); atualizarPreview(); }
 
         function extrairDadosFormulario() {
+            const auditoriaItems = Array.from(document.querySelectorAll('.dynamic-row')).map(row => {
+                const v = row.querySelector('.input-auditoria-veiculo');
+                const s = row.querySelector('.input-auditoria-status');
+                const p = row.querySelector('.input-auditoria-problema');
+                if (v && s) {
+                    const veiculo = v.value.trim();
+                    const status = s.value;
+                    const problema = p ? p.value.trim() : '';
+                    if (veiculo) {
+                        return { veiculo, status, problema };
+                    }
+                }
+                return null;
+            }).filter(Boolean);
+
             return {
                 data: dataAtual,
                 objetivo: parseFloat(document.getElementById('objetivo').value) || 0,
@@ -289,35 +384,58 @@
                 top3_qtd: document.getElementById('top3_qtd').value,
                 ocorrencia: document.getElementById('ocorrencia').value,
                 acao: document.getElementById('acao').value,
-                auditoria: Array.from(document.querySelectorAll('.input-auditoria')).map(i => i.value),
-                song: Array.from(document.querySelectorAll('.input-song')).map(i => i.value),
-                obs: Array.from(document.querySelectorAll('.input-obs')).map(i => i.value)
+                auditoria: auditoriaItems,
+                obs: Array.from(document.querySelectorAll('.input-obs')).map(i => i.value).filter(Boolean)
             };
         }
 
-        function salvarMemoria() {
+        function validarPreenchimentoObrigatorio() {
+            const objetivo = document.getElementById('objetivo').value.trim();
+            const prodRealizada = document.getElementById('prodRealizada').value.trim();
+            const prodSA6 = document.getElementById('prodSA6').value.trim();
+            const bolhas = document.getElementById('bolhas').value.trim();
+            const carrosNOK = document.getElementById('carrosNOK').value.trim();
+
+            if (!objetivo || !prodRealizada || prodSA6 === '' || bolhas === '' || carrosNOK === '') {
+                alert("⚠️ Atenção: Preencha todos os campos obrigatórios antes de salvar!");
+                return false;
+            }
+            return true;
+        }
+
+        function salvarDadosDoDia() {
             if (!dataAtual) return;
+            if (!validarPreenchimentoObrigatorio()) return;
+
             const dados = extrairDadosFormulario();
             localStorage.setItem(STORAGE_PREFIX + dataAtual, JSON.stringify(dados));
+            exibirToast("✅ Dados salvos e atualizados com sucesso!");
+            atualizarPreview();
         }
 
         function carregarDadosData(dataStr) {
             const salvo = localStorage.getItem(STORAGE_PREFIX + dataStr);
             document.getElementById('container-auditoria').innerHTML = '';
-            document.getElementById('container-song').innerHTML = '';
             document.getElementById('container-obs').innerHTML = '';
 
             if (!salvo) {
-                document.getElementById('objetivo').value = 430;
-                document.getElementById('prodRealizada').value = 500;
-                document.getElementById('prodSA6').value = 120;
-                document.getElementById('bolhas').value = 52;
-                document.getElementById('carrosNOK').value = 411;
-                document.getElementById('liberacaoOffline').value = 12;
-                document.getElementById('reinspecao').value = 12;
+                document.getElementById('objetivo').value = '';
+                document.getElementById('prodRealizada').value = '';
+                document.getElementById('prodSA6').value = '';
+                document.getElementById('bolhas').value = '';
+                document.getElementById('carrosNOK').value = '';
+                document.getElementById('liberacaoOffline').value = 0;
+                document.getElementById('reinspecao').value = 0;
                 document.getElementById('reparos').value = 0;
-                adicionarCampoAuditoria('VK072138 - OK');
-                adicionarCampoSong('SA6 - VK087991 - OK');
+                document.getElementById('top1_desc').value = '';
+                document.getElementById('top1_qtd').value = '';
+                document.getElementById('top2_desc').value = '';
+                document.getElementById('top2_qtd').value = '';
+                document.getElementById('top3_desc').value = '';
+                document.getElementById('top3_qtd').value = '';
+                document.getElementById('ocorrencia').value = '';
+                document.getElementById('acao').value = '';
+                adicionarCampoAuditoria('VK072138', 'OK', '');
                 adicionarCampoObs('Baixo volume na linha.');
             } else {
                 const d = JSON.parse(salvo);
@@ -338,24 +456,40 @@
                 document.getElementById('ocorrencia').value = d.ocorrencia;
                 document.getElementById('acao').value = d.acao;
 
-                if (d.auditoria) d.auditoria.forEach(v => adicionarCampoAuditoria(v));
-                if (d.song) d.song.forEach(v => adicionarCampoSong(v));
+                if (d.auditoria && d.auditoria.length > 0) {
+                    d.auditoria.forEach(item => {
+                        if (typeof item === 'object') {
+                            adicionarCampoAuditoria(item.veiculo, item.status, item.problema);
+                        } else {
+                            // Compatibilidade com formato antigo string
+                            adicionarCampoAuditoria(item, 'OK', '');
+                        }
+                    });
+                } else {
+                    adicionarCampoAuditoria();
+                }
+
                 if (d.obs) d.obs.forEach(v => adicionarCampoObs(v));
             }
-            processar();
+            atualizarPreview();
         }
 
-        function processar() {
-            salvarMemoria();
+        function atualizarPreview() {
             document.getElementById('preview').innerText = gerarTextoWhatsApp();
         }
 
         function gerarTextoWhatsApp() {
             const d = extrairDadosFormulario();
-            const auditoria = d.auditoria.map(v => v.trim()).filter(v => v).join('\n');
-            const song = d.song.map(v => v.trim()).filter(v => v).join('\n');
+            
+            const auditoriaText = d.auditoria.map(item => {
+                if (item.status === 'NOK') {
+                    return `• ${item.veiculo} - NOK ❌ (${item.problema || 'Sem descrição'})`;
+                }
+                return `• ${item.veiculo} - OK ✅`;
+            }).join('\n');
+
             let cnt = 1;
-            const obs = d.obs.map(v => v.trim()).filter(v => v).map(v => `• Obs ${cnt++}: ${v}`).join('\n');
+            const obs = d.obs.map(v => `• Obs ${cnt++}: ${v}`).join('\n');
 
             let text = `📋 REPORT DIÁRIO INFILTRAÇÃO (${formatarDataBR(d.data)})
 
@@ -376,8 +510,7 @@
 ⚠️ Ocorrência: ${d.ocorrencia}
 🔧 Ação: ${d.acao}`;
 
-            if (auditoria) text += `\n\n🔍 Auditoria teste intensivo:\n${auditoria}`;
-            if (song) text += `\n\n⏱️ SONG SA6 30 minutos:\n${song}`;
+            if (auditoriaText) text += `\n\n🔍 Auditoria teste intensivo:\n${auditoriaText}`;
             if (obs) text += `\n\n📝 Observações:\n${obs}`;
 
             return text;
@@ -414,7 +547,7 @@
             const corpo = document.getElementById('tabela-historico-corpo');
             const regs = obterTodosRegistros();
             if (regs.length === 0) {
-                corpo.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted);">Nenhum dado cadastrado.</td></tr>`;
+                corpo.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted);">Nenhum dado registrado.</td></tr>`;
                 return;
             }
             corpo.innerHTML = '';
@@ -432,7 +565,7 @@
             });
         }
 
-        function calcularEvolucaoSemanalMensal() {
+        function calcularEvolucaoPersonalizada() {
             const regs = obterTodosRegistros();
             const container = document.getElementById('kpi-container-metrics');
             if (regs.length === 0) {
@@ -440,59 +573,77 @@
                 return;
             }
 
-            let totalProdMes = 0;
-            let totalMetaMes = 0;
-            let totalBolhasMes = 0;
-            let totalNokMes = 0;
-            let totalLibOfflineMes = 0;
-            let totalReparosMes = 0;
-
+            const tipo = document.getElementById('tipoFiltro').value;
+            let filtrados = [];
             const hoje = new Date();
-            let totalProdSemana = 0;
-            let totalMetaSemana = 0;
 
-            regs.forEach(r => {
-                const dItem = new Date(r.data + 'T00:00:00');
-                totalProdMes += r.prodRealizadaNum;
-                totalMetaMes += r.objetivo;
-                totalBolhasMes += r.bolhas;
-                totalNokMes += r.carrosNOK;
-                totalLibOfflineMes += r.liberacaoOffline || 0;
-                totalReparosMes += r.reparos || 0;
-
-                const diffTime = Math.abs(hoje - dItem);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                if (diffDays <= 7) {
-                    totalProdSemana += r.prodRealizadaNum;
-                    totalMetaSemana += r.objetivo;
+            if (tipo === 'dia') {
+                const dt = document.getElementById('filtroDataUnica').value;
+                filtrados = regs.filter(r => r.data === dt);
+            } else if (tipo === 'semana') {
+                filtrados = regs.filter(r => {
+                    const dItem = new Date(r.data + 'T00:00:00');
+                    const diffTime = Math.abs(hoje - dItem);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    return diffDays <= 7;
+                });
+            } else if (tipo === 'mes') {
+                const dt = document.getElementById('filtroDataUnica').value;
+                if (dt) {
+                    const [ano, mes] = dt.split('-');
+                    filtrados = regs.filter(r => r.data.startsWith(`${ano}-${mes}`));
                 }
+            } else if (tipo === 'personalizado') {
+                const ini = document.getElementById('filtroDataInicio').value;
+                const fim = document.getElementById('filtroDataFim').value;
+                if (ini && fim) {
+                    filtrados = regs.filter(r => r.data >= ini && r.data <= fim);
+                }
+            }
+
+            let tProd = 0, tMeta = 0, tBolhas = 0, tNok = 0, tOff = 0, tRep = 0, tSa6 = 0;
+            filtrados.forEach(r => {
+                tProd += r.prodRealizadaNum;
+                tMeta += r.objetivo;
+                tBolhas += r.bolhas;
+                tNok += r.carrosNOK;
+                tOff += r.liberacaoOffline || 0;
+                tRep += r.reparos || 0;
+                tSa6 += r.prodSA6 || 0;
             });
 
             container.innerHTML = `
-                <div class="kpi-card">
-                    <h4>📅 Acumulado do Mês (Produção)</h4>
-                    <div class="val">${totalProdMes} carros</div>
+                <div class="kpi-card" style="border-left-color: var(--accent-blue)">
+                    <h4>📊 Volume Total Produzido</h4>
+                    <div class="val">${tProd} carros</div>
                 </div>
                 <div class="kpi-card" style="border-left-color: var(--accent-amber)">
-                    <h4>🎯 Meta Acumulada do Mês</h4>
-                    <div class="val">${totalMetaMes} carros</div>
+                    <h4>🎯 Meta Total (Objetivo)</h4>
+                    <div class="val">${tMeta} carros</div>
                 </div>
                 <div class="kpi-card" style="border-left-color: var(--accent-green)">
-                    <h4>📈 Produtividade Semanal (últimos 7 dias / c/ Sábado)</h4>
-                    <div class="val">${totalProdSemana} / Meta: ${totalMetaSemana}</div>
+                    <h4>🚗 Total Prod. SA6</h4>
+                    <div class="val">${tSa6} carros</div>
                 </div>
                 <div class="kpi-card" style="border-left-color: #ef4444">
-                    <h4>🫧 Total Bolhas / NOK no Mês</h4>
-                    <div class="val">${totalBolhasMes} Bolhas / ${totalNokMes} NOK</div>
+                    <h4>🫧 Total Bolhas</h4>
+                    <div class="val">${tBolhas} Bolhas</div>
+                </div>
+                <div class="kpi-card" style="border-left-color: #dc2626">
+                    <h4>❌ Total Carros NOK</h4>
+                    <div class="val">${tNok} NOK</div>
                 </div>
                 <div class="kpi-card" style="border-left-color: #3b82f6">
-                    <h4>📲 Total Lib. Offline / 🛠️ Reparos no Mês</h4>
-                    <div class="val">${totalLibOfflineMes} Off / ${totalReparosMes} Reparos</div>
+                    <h4>📲 Total Lib. Offline</h4>
+                    <div class="val">${tOff} Off</div>
+                </div>
+                <div class="kpi-card" style="border-left-color: #8b5cf6">
+                    <h4>🛠️ Total Reparos</h4>
+                    <div class="val">${tRep} Reparos</div>
                 </div>
             `;
         }
 
-        // EXPORTAR PARA EXCEL (Sem Ocorrência e Ação, com Data Brasileira e novos campos)
         function exportarExcel() {
             const regs = obterTodosRegistros();
             if(regs.length === 0) { alert("Não há dados para exportar."); return; }
@@ -515,7 +666,6 @@
             XLSX.writeFile(workbook, "report_infiltracao_evolucao.xlsx");
         }
 
-        // IMPORTAR DE EXCEL
         function importarExcel(event) {
             const file = event.target.files[0];
             if(!file) return;
@@ -555,7 +705,7 @@
                                 top3_desc: "", top3_qtd: "",
                                 ocorrencia: "",
                                 acao: "",
-                                auditoria: [], song: [], obs: []
+                                auditoria: [], obs: []
                             };
                             localStorage.setItem(STORAGE_PREFIX + dt, JSON.stringify(objFormatado));
                         }
@@ -572,11 +722,12 @@
         }
 
         function copiarTexto() {
-            navigator.clipboard.writeText(gerarTextoWhatsApp()).then(() => exibirToast());
+            navigator.clipboard.writeText(gerarTextoWhatsApp()).then(() => exibirToast("Texto copiado com sucesso!"));
         }
 
-        function exibirToast() {
+        function exibirToast(msg = "Operação realizada com sucesso!") {
             const toast = document.getElementById('toast');
+            toast.innerText = msg;
             toast.style.display = 'block';
             setTimeout(() => { toast.style.display = 'none'; }, 2000);
         }
