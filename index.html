@@ -32,8 +32,26 @@
         
         .header { max-width: 1280px; margin: 0 auto 24px auto; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 20px; flex-wrap: wrap; gap: 15px; }
         .header h1 { font-size: 1.6rem; font-weight: 700; color: var(--text-main); letter-spacing: -0.5px; }
-        .header .subtitle { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; }
+        .header .subtitle { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; display: flex; align-items: center; gap: 10px; }
         
+        .status-cloud {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(5, 150, 105, 0.15);
+            color: var(--accent-green);
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            border: 1px solid var(--accent-green);
+        }
+        .status-cloud.syncing {
+            background: rgba(217, 119, 6, 0.15);
+            color: var(--accent-amber);
+            border-color: var(--accent-amber);
+        }
+
         .date-selector-box { display: flex; align-items: center; gap: 12px; background: var(--bg-card); padding: 10px 18px; border-radius: var(--radius-md); border: 1px solid var(--border-color); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
         .date-selector-box label { font-size: 0.8rem; color: var(--accent-amber); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
         .date-selector-box input[type="date"] { background: var(--bg-input); color: #fff; border: 1px solid var(--border-color); padding: 8px 12px; border-radius: 6px; font-size: 0.9rem; cursor: pointer; font-weight: 600; outline: none; }
@@ -111,7 +129,10 @@
     <div class="header">
         <div>
             <h1>📋 Report Diário Infiltração</h1>
-            <div class="subtitle">Controle de Produção, Metas, Liberação Offline e Reparos (Turno A - Cloud)</div>
+            <div class="subtitle">
+                <span>Controle de Produção, Metas, Liberação Offline e Reparos (Turno A)</span>
+                <span id="cloudStatus" class="status-cloud">● Nuvem Conectada</span>
+            </div>
         </div>
         <div class="date-selector-box">
             <label for="dataLancamento">📅 Data de Lançamento:</label>
@@ -272,7 +293,7 @@
 
     <script>
         // ==========================================================
-        // ⚙️ CONFIGURAÇÃO DO FIREBASE (Suas credenciais oficiais)
+        // ⚙️ CONFIGURAÇÃO DO FIREBASE
         // ==========================================================
         const firebaseConfig = {
             apiKey: "AIzaSyBeWssEdC-JzbigEEYFj7pE71V_wVf2_HY",
@@ -284,7 +305,6 @@
             appId: "1:508911260921:web:4252cf00547b17af207e28"
         };
 
-        // Inicializar Firebase (Versão Compat)
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         const COLLECTION_NAME = "reports_infiltracao";
@@ -292,7 +312,15 @@
         let dataAtual = '';
         let cacheRegistros = [];
 
-        async function inicializarApp() {
+        function setCloudStatus(texto, isWarning) {
+            const statusEl = document.getElementById('cloudStatus');
+            if(statusEl) {
+                statusEl.innerText = texto;
+                statusEl.className = isWarning ? "status-cloud syncing" : "status-cloud";
+            }
+        }
+
+        function inicializarApp() {
             const hoje = new Date().toISOString().split('T')[0];
             document.getElementById('dataLancamento').value = hoje;
             document.getElementById('filtroDataUnica').value = hoje;
@@ -300,26 +328,94 @@
             document.getElementById('filtroDataFim').value = hoje;
             dataAtual = hoje;
 
-            await carregarTodosRegistrosDoFirebase();
-            await carregarDadosData(dataAtual);
-        }
-
-        async function carregarTodosRegistrosDoFirebase() {
-            try {
-                const snapshot = await db.collection(COLLECTION_NAME).get();
+            // OUVINTE EM TEMPO REAL (Realtime / onSnapshot)
+            // Sincroniza automaticamente todos os dados de qualquer alteração na nuvem
+            db.collection(COLLECTION_NAME).onSnapshot((snapshot) => {
                 cacheRegistros = [];
                 snapshot.forEach(doc => {
                     cacheRegistros.push(doc.data());
                 });
                 cacheRegistros.sort((a,b) => new Date(a.data) - new Date(b.data));
-            } catch (error) {
-                console.error("Erro ao buscar dados do Firebase:", error);
-            }
+                
+                // Atualiza a interface da data atual caso esteja aberta e as abas ativas
+                carregarDadosDataLocal(dataAtual);
+                if (document.getElementById('tab-historico').classList.contains('active')) {
+                    atualizarTabelaHistorico();
+                }
+                if (document.getElementById('tab-evolucao').classList.contains('active')) {
+                    calcularEvolucaoPersonalizada();
+                }
+                setCloudStatus("● Nuvem Sincronizada", false);
+            }, (error) => {
+                console.error("Erro no ouvinte da nuvem:", error);
+                setCloudStatus("● Erro de Conexão", true);
+            });
         }
 
         async function mudarDataLancamento() {
             dataAtual = document.getElementById('dataLancamento').value;
-            await carregarDadosData(dataAtual);
+            carregarDadosDataLocal(dataAtual);
+        }
+
+        function carregarDadosDataLocal(dataStr) {
+            document.getElementById('container-auditoria').innerHTML = '';
+            document.getElementById('container-obs').innerHTML = '';
+
+            const registroEncontrado = cacheRegistros.find(r => r.data === dataStr);
+
+            if (!registroEncontrado) {
+                document.getElementById('objetivo').value = '';
+                document.getElementById('prodRealizada').value = '';
+                document.getElementById('prodSA6').value = '';
+                document.getElementById('bolhas').value = '';
+                document.getElementById('carrosNOK').value = '';
+                document.getElementById('liberacaoOffline').value = 0;
+                document.getElementById('reinspecao').value = 0;
+                document.getElementById('reparos').value = 0;
+                document.getElementById('top1_desc').value = '';
+                document.getElementById('top1_qtd').value = '';
+                document.getElementById('top2_desc').value = '';
+                document.getElementById('top2_qtd').value = '';
+                document.getElementById('top3_desc').value = '';
+                document.getElementById('top3_qtd').value = '';
+                document.getElementById('ocorrencia').value = '';
+                document.getElementById('acao').value = '';
+                adicionarCampoAuditoria('VK072138', 'OK', '30 min', '');
+                adicionarCampoObs('Baixo volume na linha.');
+            } else {
+                const d = registroEncontrado;
+                document.getElementById('objetivo').value = d.objetivo;
+                document.getElementById('prodRealizada').value = d.prodRealizadaStr;
+                document.getElementById('prodSA6').value = d.prodSA6;
+                document.getElementById('bolhas').value = d.bolhas;
+                document.getElementById('carrosNOK').value = d.carrosNOK;
+                document.getElementById('liberacaoOffline').value = d.liberacaoOffline;
+                document.getElementById('reinspecao').value = d.reinspecao;
+                document.getElementById('reparos').value = d.reparos !== undefined ? d.reparos : 0;
+                document.getElementById('top1_desc').value = d.top1_desc;
+                document.getElementById('top1_qtd').value = d.top1_qtd;
+                document.getElementById('top2_desc').value = d.top2_desc;
+                document.getElementById('top2_qtd').value = d.top2_qtd;
+                document.getElementById('top3_desc').value = d.top3_desc;
+                document.getElementById('top3_qtd').value = d.top3_qtd;
+                document.getElementById('ocorrencia').value = d.ocorrencia;
+                document.getElementById('acao').value = d.acao;
+
+                if (d.auditoria && d.auditoria.length > 0) {
+                    d.auditoria.forEach(item => {
+                        if (typeof item === 'object') {
+                            adicionarCampoAuditoria(item.veiculo, item.status, item.tempo || '30 min', item.problema);
+                        } else {
+                            adicionarCampoAuditoria(item, 'OK', '30 min', '');
+                        }
+                    });
+                } else {
+                    adicionarCampoAuditoria();
+                }
+
+                if (d.obs) d.obs.forEach(v => adicionarCampoObs(v));
+            }
+            atualizarPreview();
         }
 
         function trocarAba(aba, event) {
@@ -481,81 +577,18 @@
             if (!validarPreenchimentoObrigatorio()) return;
 
             const dados = extrairDadosFormulario();
+            setCloudStatus("● Salvando...", true);
             
             try {
                 await db.collection(COLLECTION_NAME).doc(dataAtual).set(dados);
-                await carregarTodosRegistrosDoFirebase();
                 exibirToast("✅ Dados salvos na nuvem com sucesso!");
+                setCloudStatus("● Nuvem Sincronizada", false);
                 atualizarPreview();
             } catch (error) {
                 console.error("Erro ao salvar no Firebase:", error);
                 alert("❌ Erro ao salvar dados na nuvem. Verifique se as Regras do Firestore estão permitindo leitura/escrita.");
+                setCloudStatus("● Erro ao Salvar", true);
             }
-        }
-
-        async function carregarDadosData(dataStr) {
-            document.getElementById('container-auditoria').innerHTML = '';
-            document.getElementById('container-obs').innerHTML = '';
-
-            try {
-                const docRef = await db.collection(COLLECTION_NAME).doc(dataStr).get();
-                
-                if (!docRef.exists) {
-                    document.getElementById('objetivo').value = '';
-                    document.getElementById('prodRealizada').value = '';
-                    document.getElementById('prodSA6').value = '';
-                    document.getElementById('bolhas').value = '';
-                    document.getElementById('carrosNOK').value = '';
-                    document.getElementById('liberacaoOffline').value = 0;
-                    document.getElementById('reinspecao').value = 0;
-                    document.getElementById('reparos').value = 0;
-                    document.getElementById('top1_desc').value = '';
-                    document.getElementById('top1_qtd').value = '';
-                    document.getElementById('top2_desc').value = '';
-                    document.getElementById('top2_qtd').value = '';
-                    document.getElementById('top3_desc').value = '';
-                    document.getElementById('top3_qtd').value = '';
-                    document.getElementById('ocorrencia').value = '';
-                    document.getElementById('acao').value = '';
-                    adicionarCampoAuditoria('VK072138', 'OK', '30 min', '');
-                    adicionarCampoObs('Baixo volume na linha.');
-                } else {
-                    const d = docRef.data();
-                    document.getElementById('objetivo').value = d.objetivo;
-                    document.getElementById('prodRealizada').value = d.prodRealizadaStr;
-                    document.getElementById('prodSA6').value = d.prodSA6;
-                    document.getElementById('bolhas').value = d.bolhas;
-                    document.getElementById('carrosNOK').value = d.carrosNOK;
-                    document.getElementById('liberacaoOffline').value = d.liberacaoOffline;
-                    document.getElementById('reinspecao').value = d.reinspecao;
-                    document.getElementById('reparos').value = d.reparos !== undefined ? d.reparos : 0;
-                    document.getElementById('top1_desc').value = d.top1_desc;
-                    document.getElementById('top1_qtd').value = d.top1_qtd;
-                    document.getElementById('top2_desc').value = d.top2_desc;
-                    document.getElementById('top2_qtd').value = d.top2_qtd;
-                    document.getElementById('top3_desc').value = d.top3_desc;
-                    document.getElementById('top3_qtd').value = d.top3_qtd;
-                    document.getElementById('ocorrencia').value = d.ocorrencia;
-                    document.getElementById('acao').value = d.acao;
-
-                    if (d.auditoria && d.auditoria.length > 0) {
-                        d.auditoria.forEach(item => {
-                            if (typeof item === 'object') {
-                                adicionarCampoAuditoria(item.veiculo, item.status, item.tempo || '30 min', item.problema);
-                            } else {
-                                adicionarCampoAuditoria(item, 'OK', '30 min', '');
-                            }
-                        });
-                    } else {
-                        adicionarCampoAuditoria();
-                    }
-
-                    if (d.obs) d.obs.forEach(v => adicionarCampoObs(v));
-                }
-            } catch (error) {
-                console.error("Erro ao carregar dados:", error);
-            }
-            atualizarPreview();
         }
 
         function atualizarPreview() {
@@ -610,8 +643,7 @@
             if (confirm("Deseja apagar os dados desta data da nuvem?")) {
                 try {
                     await db.collection(COLLECTION_NAME).doc(dataAtual).delete();
-                    await carregarTodosRegistrosDoFirebase();
-                    await carregarDadosData(dataAtual);
+                    carregarDadosDataLocal(dataAtual);
                     exibirToast("🗑️ Dados limpos com sucesso!");
                 } catch(error) {
                     console.error("Erro ao limpar:", error);
@@ -787,8 +819,6 @@
                         }
                     }
 
-                    await carregarTodosRegistrosDoFirebase();
-                    await carregarDadosData(dataAtual);
                     alert("Planilha importada e sincronizada com o Firebase com sucesso!");
                 } catch(err) {
                     alert("Erro ao ler o arquivo Excel. Verifique o formato.");
