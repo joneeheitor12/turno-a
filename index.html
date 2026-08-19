@@ -51,6 +51,11 @@
             color: var(--accent-amber);
             border-color: var(--accent-amber);
         }
+        .status-cloud.offline {
+            background: rgba(220, 38, 38, 0.15);
+            color: #ef4444;
+            border-color: #ef4444;
+        }
 
         .date-selector-box { display: flex; align-items: center; gap: 12px; background: var(--bg-card); padding: 10px 18px; border-radius: var(--radius-md); border: 1px solid var(--border-color); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
         .date-selector-box label { font-size: 0.8rem; color: var(--accent-amber); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -308,15 +313,22 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         const COLLECTION_NAME = "reports_infiltracao";
+        const STORAGE_KEY_PENDENTES = "reports_pendentes_offline";
 
         let dataAtual = '';
         let cacheRegistros = [];
 
-        function setCloudStatus(texto, isWarning) {
+        function setCloudStatus(texto, tipo) {
             const statusEl = document.getElementById('cloudStatus');
             if(statusEl) {
                 statusEl.innerText = texto;
-                statusEl.className = isWarning ? "status-cloud syncing" : "status-cloud";
+                if(tipo === 'warning') {
+                    statusEl.className = "status-cloud syncing";
+                } else if(tipo === 'offline') {
+                    statusEl.className = "status-cloud offline";
+                } else {
+                    statusEl.className = "status-cloud";
+                }
             }
         }
 
@@ -328,8 +340,21 @@
             document.getElementById('filtroDataFim').value = hoje;
             dataAtual = hoje;
 
+            // Monitora o status de conexão da rede do celular
+            window.addEventListener('online', () => {
+                setCloudStatus("● Conectado - Sincronizando...", "warning");
+                sincronizarDadosPendentes();
+            });
+
+            window.addEventListener('offline', () => {
+                setCloudStatus("● Sem Internet (Modo Offline)", "offline");
+            });
+
+            if (!navigator.onLine) {
+                setCloudStatus("● Sem Internet (Modo Offline)", "offline");
+            }
+
             // OUVINTE EM TEMPO REAL (Realtime / onSnapshot)
-            // Sincroniza automaticamente todos os dados de qualquer alteração na nuvem
             db.collection(COLLECTION_NAME).onSnapshot((snapshot) => {
                 cacheRegistros = [];
                 snapshot.forEach(doc => {
@@ -337,7 +362,6 @@
                 });
                 cacheRegistros.sort((a,b) => new Date(a.data) - new Date(b.data));
                 
-                // Atualiza a interface da data atual caso esteja aberta e as abas ativas
                 carregarDadosDataLocal(dataAtual);
                 if (document.getElementById('tab-historico').classList.contains('active')) {
                     atualizarTabelaHistorico();
@@ -345,11 +369,47 @@
                 if (document.getElementById('tab-evolucao').classList.contains('active')) {
                     calcularEvolucaoPersonalizada();
                 }
-                setCloudStatus("● Nuvem Sincronizada", false);
+                if (navigator.onLine) {
+                    setCloudStatus("● Nuvem Sincronizada", "success");
+                }
             }, (error) => {
                 console.error("Erro no ouvinte da nuvem:", error);
-                setCloudStatus("● Erro de Conexão", true);
+                setCloudStatus("● Erro de Conexão", "offline");
             });
+        }
+
+        // Função para salvar dados pendentes no localStorage quando offline e reenviá-los ao reconectar
+        async function sincronizarDadosPendentes() {
+            const pendentesStr = localStorage.getItem(STORAGE_KEY_PENDENTES);
+            if (!pendentesStr) return;
+
+            try {
+                let pendentes = JSON.parse(pendentesStr);
+                if (pendentes.length > 0) {
+                    setCloudStatus("● Sincronizando dados pendentes...", "warning");
+                    for (let dados of pendentes) {
+                        await db.collection(COLLECTION_NAME).doc(dados.data).set(dados);
+                    }
+                    localStorage.removeItem(STORAGE_KEY_PENDENTES);
+                    exibirToast("🔄 Dados offline sincronizados com sucesso!");
+                }
+            } catch (err) {
+                console.error("Erro ao sincronizar dados offline:", err);
+            }
+        }
+
+        function salvarOfflineLocalmente(dados) {
+            let pendentes = [];
+            const pendentesStr = localStorage.getItem(STORAGE_KEY_PENDENTES);
+            if (pendentesStr) {
+                try { pendentes = JSON.parse(pendentesStr); } catch(e) {}
+            }
+            
+            // Substitui caso já exista um registro offline para a mesma data
+            pendentes = pendentes.filter(p => p.data !== dados.data);
+            pendentes.push(dados);
+            
+            localStorage.setItem(STORAGE_KEY_PENDENTES, JSON.stringify(pendentes));
         }
 
         async function mudarDataLancamento() {
@@ -361,7 +421,19 @@
             document.getElementById('container-auditoria').innerHTML = '';
             document.getElementById('container-obs').innerHTML = '';
 
-            const registroEncontrado = cacheRegistros.find(r => r.data === dataStr);
+            // Tenta buscar primeiro do cache da nuvem
+            let registroEncontrado = cacheRegistros.find(r => r.data === dataStr);
+
+            // Se não estiver na nuvem, verifica se foi salvo localmente offline
+            if (!registroEncontrado) {
+                const pendentesStr = localStorage.getItem(STORAGE_KEY_PENDENTES);
+                if (pendentesStr) {
+                    try {
+                        const pendentes = JSON.parse(pendentesStr);
+                        registroEncontrado = pendentes.find(p => p.data === dataStr);
+                    } catch(e) {}
+                }
+            }
 
             if (!registroEncontrado) {
                 document.getElementById('objetivo').value = '';
@@ -577,17 +649,27 @@
             if (!validarPreenchimentoObrigatorio()) return;
 
             const dados = extrairDadosFormulario();
-            setCloudStatus("● Salvando...", true);
+            
+            // Verifica se o celular está sem internet
+            if (!navigator.onLine) {
+                salvarOfflineLocalmente(dados);
+                exibirToast("💾 Sem internet! Dados salvos no aparelho. Serão enviados ao reconectar.");
+                setCloudStatus("● Salvo Offline (Aguardando Rede)", "offline");
+                return;
+            }
+
+            setCloudStatus("● Salvando...", "warning");
             
             try {
                 await db.collection(COLLECTION_NAME).doc(dataAtual).set(dados);
                 exibirToast("✅ Dados salvos na nuvem com sucesso!");
-                setCloudStatus("● Nuvem Sincronizada", false);
+                setCloudStatus("● Nuvem Sincronizada", "success");
                 atualizarPreview();
             } catch (error) {
-                console.error("Erro ao salvar no Firebase:", error);
-                alert("❌ Erro ao salvar dados na nuvem. Verifique se as Regras do Firestore estão permitindo leitura/escrita.");
-                setCloudStatus("● Erro ao Salvar", true);
+                console.error("Erro ao salvar no Firebase, salvando localmente de backup:", error);
+                salvarOfflineLocalmente(dados);
+                exibirToast("⚠️ Erro de rede. Dados salvos localmente no celular!");
+                setCloudStatus("● Salvo Offline (Erro de Rede)", "offline");
             }
         }
 
@@ -640,9 +722,18 @@
         }
 
         async function limparTudo() {
-            if (confirm("Deseja apagar os dados desta data da nuvem?")) {
+            if (confirm("Deseja apagar os dados desta data da nuvem e do aparelho?")) {
                 try {
                     await db.collection(COLLECTION_NAME).doc(dataAtual).delete();
+                    
+                    // Remove também do armazenamento local se existir
+                    let pendentes = [];
+                    const pendentesStr = localStorage.getItem(STORAGE_KEY_PENDENTES);
+                    if (pendentesStr) {
+                        pendentes = JSON.parse(pendentesStr).filter(p => p.data !== dataAtual);
+                        localStorage.setItem(STORAGE_KEY_PENDENTES, JSON.stringify(pendentes));
+                    }
+
                     carregarDadosDataLocal(dataAtual);
                     exibirToast("🗑️ Dados limpos com sucesso!");
                 } catch(error) {
@@ -836,7 +927,7 @@
             const toast = document.getElementById('toast');
             toast.innerText = msg;
             toast.style.display = 'block';
-            setTimeout(() => { toast.style.display = 'none'; }, 2000);
+            setTimeout(() => { toast.style.display = 'none'; }, 3000);
         }
 
         function enviarWhatsApp() {
