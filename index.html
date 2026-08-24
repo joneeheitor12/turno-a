@@ -135,7 +135,7 @@
         <div>
             <h1>📋 Report Diário Infiltração</h1>
             <div class="subtitle">
-                <span>Controle de Produção, Metas, Liberação Offline e Reparos (Turno A)</span>
+                <span>Controle de Produção, Metas, Liberação Offline e Recebimento com Pendência (Turno A)</span>
                 <span id="cloudStatus" class="status-cloud">● Nuvem Conectada</span>
             </div>
         </div>
@@ -179,7 +179,7 @@
             </div>
 
             <div class="form-row">
-                <div class="form-group" style="grid-column: span 2;"><label>🛠️ Reparos</label><input type="number" id="reparos" value="0"></div>
+                <div class="form-group" style="grid-column: span 2;"><label>🛠️ Recebimento com Pendência</label><input type="number" id="reparos" value="0"></div>
             </div>
 
             <div class="section-subtitle">🚨 TOP 3 Problemas</div>
@@ -248,7 +248,7 @@
                             <th>Bolhas</th>
                             <th>NOK</th>
                             <th>Lib. Offline</th>
-                            <th>Reparos</th>
+                            <th>Rec. com Pendência</th>
                         </tr>
                     </thead>
                     <tbody id="tabela-historico-corpo">
@@ -699,7 +699,7 @@
 ❌ Carros NOK: ${d.carrosNOK}
 📲 Liberação Offline: ${d.liberacaoOffline}
 🔄 Reinspeção: ${d.reinspecao}
-🛠️ Reparos: ${d.reparos}
+🛠️ Recebimento com Pendência: ${d.reparos}
 
 🚨 TOP 3 PROBLEMAS DETECTADOS
 1️⃣ ${d.top1_desc}${d.top1_qtd ? ' - ' + String(d.top1_qtd).padStart(2, '0') : ''}
@@ -837,8 +837,8 @@
                     <div class="val">${tOff} Off</div>
                 </div>
                 <div class="kpi-card" style="border-left-color: #8b5cf6">
-                    <h4>🛠️ Total Reparos</h4>
-                    <div class="val">${tRep} Reparos</div>
+                    <h4>🛠️ Total Rec. c/ Pendência</h4>
+                    <div class="val">${tRep} Pendências</div>
                 </div>
             `;
         }
@@ -856,7 +856,7 @@
                 "Carros NOK": r.carrosNOK,
                 "Liberação Offline": r.liberacaoOffline,
                 "Reinspeção": r.reinspecao,
-                "Reparos": r.reparos || 0
+                "Recebimento com Pendência": r.reparos || 0
             }));
 
             const worksheet = XLSX.utils.json_to_sheet(dadosPlanilha);
@@ -888,6 +888,9 @@
                                 }
                             }
 
+                            // Suporta leitura tanto da chave antiga "Reparos" quanto da nova no Excel importado
+                            const valorReparos = row["Recebimento com Pendência"] !== undefined ? row["Recebimento com Pendência"] : (row["Reparos"] || 0);
+
                             const objFormatado = {
                                 data: dt,
                                 objetivo: row["Objetivo (Meta)"] || 430,
@@ -898,7 +901,7 @@
                                 carrosNOK: row["Carros NOK"] || 0,
                                 liberacaoOffline: row["Liberação Offline"] || 0,
                                 reinspecao: row["Reinspeção"] || 0,
-                                reparos: row["Reparos"] || 0,
+                                reparos: valorReparos,
                                 top1_desc: "", top1_qtd: "",
                                 top2_desc: "", top2_qtd: "",
                                 top3_desc: "", top3_qtd: "",
