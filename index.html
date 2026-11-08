@@ -77,24 +77,9 @@
         
         .form-group { margin-bottom: 16px; }
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
         label { display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 6px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
         input[type="text"], input[type="number"], select { width: 100%; padding: 11px 14px; background-color: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-md); color: #ffffff; font-size: 0.95rem; font-weight: 500; transition: border-color 0.2s; }
         input:focus, select:focus { outline: none; border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); }
-
-        /* Badge para mostrar % de Atingimento na UI */
-        .pct-display-box {
-            background: rgba(37, 99, 235, 0.12);
-            border: 1px solid rgba(37, 99, 235, 0.4);
-            border-radius: var(--radius-md);
-            padding: 10px 14px;
-            margin-bottom: 18px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .pct-display-box .label { font-size: 0.8rem; font-weight: 700; color: #93c5fd; text-transform: uppercase; }
-        .pct-display-box .value { font-size: 1.3rem; font-weight: 800; color: #60a5fa; }
         
         .dynamic-row { background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 10px; border-radius: var(--radius-md); margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px; }
         .dynamic-inputs { display: flex; gap: 8px; align-items: center; }
@@ -134,19 +119,6 @@
         .history-table tr:hover { background-color: rgba(59, 130, 246, 0.04); }
         .badge-date { background-color: var(--accent-amber); color: #000; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; }
         
-        .badge-pct {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            font-weight: 800;
-            background: rgba(37, 99, 235, 0.2);
-            color: #60a5fa;
-            border: 1px solid rgba(37, 99, 235, 0.4);
-        }
-        .badge-pct.high { background: rgba(5, 150, 105, 0.2); color: #34d399; border-color: rgba(5, 150, 105, 0.4); }
-        .badge-pct.low { background: rgba(220, 38, 38, 0.2); color: #f87171; border-color: rgba(220, 38, 38, 0.4); }
-
         .filter-panel { background: var(--bg-input); padding: 20px; border-radius: var(--radius-md); margin-bottom: 24px; border: 1px solid var(--border-color); display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; align-items: flex-end; }
         .filter-panel .form-group { margin-bottom: 0; }
         
@@ -162,7 +134,7 @@
         <div>
             <h1>📋 Report Diário Infiltração</h1>
             <div class="subtitle">
-                <span>Controle de Produção, Metas, Liberação Offline e Reparos (Turno A)</span>
+                <span>Controle de Produção, Metas, FTT (%), Liberação Offline e Tratativas (Turno A)</span>
                 <span id="cloudStatus" class="status-cloud">● Nuvem Conectada</span>
             </div>
         </div>
@@ -190,18 +162,11 @@
             </div>
             
             <div class="form-row">
-                <div class="form-group"><label>🎯 Objetivo (Meta) *</label><input type="number" id="objetivo" placeholder="Ex: 434" oninput="atualizarPreview()"></div>
-                <div class="form-group"><label>📊 Produção Realizada *</label><input type="text" id="prodRealizada" placeholder="Ex: 97" oninput="atualizarPreview()"></div>
+                <div class="form-group"><label>🎯 Objetivo (Meta) *</label><input type="number" id="objetivo" placeholder="Ex: 430" oninput="atualizarPreview()"></div>
+                <div class="form-group"><label>📊 Produção Realizada *</label><input type="text" id="prodRealizada" placeholder="Ex: 500" oninput="atualizarPreview()"></div>
             </div>
 
-            <!-- Box dinamico para % de atingimento -->
-            <div class="pct-display-box">
-                <span class="label">📈 % Atingimento da Meta</span>
-                <span class="value" id="displayPorcentagemUI">0.0%</span>
-            </div>
-
-            <div class="form-row-3">
-                <div class="form-group"><label>🚗 Prod. SA6 *</label><input type="number" id="prodSA6" placeholder="0" oninput="atualizarPreview()"></div>
+            <div class="form-row">
                 <div class="form-group"><label>🫧 Bolhas *</label><input type="number" id="bolhas" placeholder="0" oninput="atualizarPreview()"></div>
                 <div class="form-group"><label>❌ Carros NOK *</label><input type="number" id="carrosNOK" placeholder="0" oninput="atualizarPreview()"></div>
             </div>
@@ -212,7 +177,7 @@
             </div>
 
             <div class="form-row">
-                <div class="form-group" style="grid-column: span 2;"><label>🛠️ Reparos</label><input type="number" id="reparos" value="0" oninput="atualizarPreview()"></div>
+                <div class="form-group" style="grid-column: span 2;"><label>🛠️ Tratativas</label><input type="number" id="tratativas" value="0" oninput="atualizarPreview()"></div>
             </div>
 
             <div class="section-subtitle">🚨 TOP 3 Problemas</div>
@@ -242,6 +207,7 @@
             <div class="form-group"><label>Ocorrência</label><input type="text" id="ocorrencia" placeholder="Descreva a ocorrência..." oninput="atualizarPreview()"></div>
             <div class="form-group"><label>Ação Tomada</label><input type="text" id="acao" placeholder="Descreva a ação..." oninput="atualizarPreview()"></div>
 
+            <!-- AUDITORIA COM OPÇÕES EXPANDIDAS E TEMPO PERSONALIZADO -->
             <div class="section-subtitle">🔍 Auditoria Teste Intensivo</div>
             <div id="container-auditoria"></div>
             <button class="btn-add" onclick="adicionarCampoAuditoria()">➕ Adicionar Carro Auditoria</button>
@@ -276,16 +242,15 @@
                             <th>Data</th>
                             <th>Meta</th>
                             <th>Realizado</th>
-                            <th>% Atingido</th>
-                            <th>SA6</th>
+                            <th>FTT (%)</th>
                             <th>Bolhas</th>
                             <th>NOK</th>
                             <th>Lib. Offline</th>
-                            <th>Reparos</th>
+                            <th>Tratativas</th>
                         </tr>
                     </thead>
                     <tbody id="tabela-historico-corpo">
-                        <tr><td colspan="9" style="text-align: center; color: var(--text-muted);">Carregando dados da nuvem...</td></tr>
+                        <tr><td colspan="8" style="text-align: center; color: var(--text-muted);">Carregando dados da nuvem...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -373,6 +338,7 @@
             document.getElementById('filtroDataFim').value = hoje;
             dataAtual = hoje;
 
+            // Monitora o status de conexão da rede do celular
             window.addEventListener('online', () => {
                 setCloudStatus("● Conectado - Sincronizando...", "warning");
                 sincronizarDadosPendentes();
@@ -386,6 +352,7 @@
                 setCloudStatus("● Sem Internet (Modo Offline)", "offline");
             }
 
+            // OUVINTE EM TEMPO REAL (Realtime / onSnapshot)
             db.collection(COLLECTION_NAME).onSnapshot((snapshot) => {
                 cacheRegistros = [];
                 snapshot.forEach(doc => {
@@ -409,6 +376,7 @@
             });
         }
 
+        // Função para salvar dados pendentes no localStorage quando offline e reenviá-los ao reconectar
         async function sincronizarDadosPendentes() {
             const pendentesStr = localStorage.getItem(STORAGE_KEY_PENDENTES);
             if (!pendentesStr) return;
@@ -435,6 +403,7 @@
                 try { pendentes = JSON.parse(pendentesStr); } catch(e) {}
             }
             
+            // Substitui caso já exista um registro offline para a mesma data
             pendentes = pendentes.filter(p => p.data !== dados.data);
             pendentes.push(dados);
             
@@ -450,8 +419,10 @@
             document.getElementById('container-auditoria').innerHTML = '';
             document.getElementById('container-obs').innerHTML = '';
 
+            // Tenta buscar primeiro do cache da nuvem
             let registroEncontrado = cacheRegistros.find(r => r.data === dataStr);
 
+            // Se não estiver na nuvem, verifica se foi salvo localmente offline
             if (!registroEncontrado) {
                 const pendentesStr = localStorage.getItem(STORAGE_KEY_PENDENTES);
                 if (pendentesStr) {
@@ -465,12 +436,11 @@
             if (!registroEncontrado) {
                 document.getElementById('objetivo').value = '';
                 document.getElementById('prodRealizada').value = '';
-                document.getElementById('prodSA6').value = '';
                 document.getElementById('bolhas').value = '';
                 document.getElementById('carrosNOK').value = '';
                 document.getElementById('liberacaoOffline').value = 0;
                 document.getElementById('reinspecao').value = 0;
-                document.getElementById('reparos').value = 0;
+                document.getElementById('tratativas').value = 0;
                 document.getElementById('top1_desc').value = '';
                 document.getElementById('top1_qtd').value = '';
                 document.getElementById('top2_desc').value = '';
@@ -485,20 +455,19 @@
                 const d = registroEncontrado;
                 document.getElementById('objetivo').value = d.objetivo;
                 document.getElementById('prodRealizada').value = d.prodRealizadaStr;
-                document.getElementById('prodSA6').value = d.prodSA6;
                 document.getElementById('bolhas').value = d.bolhas;
                 document.getElementById('carrosNOK').value = d.carrosNOK;
                 document.getElementById('liberacaoOffline').value = d.liberacaoOffline;
                 document.getElementById('reinspecao').value = d.reinspecao;
-                document.getElementById('reparos').value = d.reparos !== undefined ? d.reparos : 0;
-                document.getElementById('top1_desc').value = d.top1_desc || '';
-                document.getElementById('top1_qtd').value = d.top1_qtd || '';
-                document.getElementById('top2_desc').value = d.top2_desc || '';
-                document.getElementById('top2_qtd').value = d.top2_qtd || '';
-                document.getElementById('top3_desc').value = d.top3_desc || '';
-                document.getElementById('top3_qtd').value = d.top3_qtd || '';
-                document.getElementById('ocorrencia').value = d.ocorrencia || '';
-                document.getElementById('acao').value = d.acao || '';
+                document.getElementById('tratativas').value = d.tratativas !== undefined ? d.tratativas : (d.reparos || 0);
+                document.getElementById('top1_desc').value = d.top1_desc;
+                document.getElementById('top1_qtd').value = d.top1_qtd;
+                document.getElementById('top2_desc').value = d.top2_desc;
+                document.getElementById('top2_qtd').value = d.top2_qtd;
+                document.getElementById('top3_desc').value = d.top3_desc;
+                document.getElementById('top3_qtd').value = d.top3_qtd;
+                document.getElementById('ocorrencia').value = d.ocorrencia;
+                document.getElementById('acao').value = d.acao;
 
                 if (d.auditoria && d.auditoria.length > 0) {
                     d.auditoria.forEach(item => {
@@ -613,8 +582,15 @@
 
         function removerCampo(btn) { btn.closest('.dynamic-row').remove(); atualizarPreview(); }
 
+        function calcularFTT(prodRealizadaNum, carrosNOK) {
+            if (!prodRealizadaNum || prodRealizadaNum <= 0) return "0.0%";
+            const ok = Math.max(0, prodRealizadaNum - (carrosNOK || 0));
+            const fttVal = (ok / prodRealizadaNum) * 100;
+            return fttVal.toFixed(1) + "%";
+        }
+
         function extrairDadosFormulario() {
-            const auditoriaItems = Array.from(document.querySelectorAll('#container-auditoria .dynamic-row')).map(row => {
+            const auditoriaItems = Array.from(document.querySelectorAll('.dynamic-row')).map(row => {
                 const v = row.querySelector('.input-auditoria-veiculo');
                 const ts = row.querySelector('.input-auditoria-tempo-select');
                 const tc = row.querySelector('.input-auditoria-tempo-custom');
@@ -633,28 +609,20 @@
                 return null;
             }).filter(Boolean);
 
-            const objetivo = parseFloat(document.getElementById('objetivo').value) || 0;
-            const prodRealizadaStr = document.getElementById('prodRealizada').value.trim();
-            // Extrai apenas números caso o usuário digite texto junto
-            const prodRealizadaNum = parseFloat(prodRealizadaStr.replace(/[^0-9.,]/g, '').replace(',', '.')) || 0;
-
-            // CÁLCULO DE PORCENTAGEM DE PRODUÇÃO CORRESPONDENTE
-            const porcentagemNum = objetivo > 0 ? (prodRealizadaNum / objetivo) * 100 : 0;
-            const porcentagemStr = porcentagemNum.toFixed(2);
+            const prodNum = parseFloat(document.getElementById('prodRealizada').value) || 0;
+            const nokNum = parseFloat(document.getElementById('carrosNOK').value) || 0;
 
             return {
                 data: dataAtual,
-                objetivo: objetivo,
-                prodRealizadaStr: prodRealizadaStr,
-                prodRealizadaNum: prodRealizadaNum,
-                porcentagemNum: parseFloat(porcentagemStr),
-                porcentagemStr: porcentagemStr + '%',
-                prodSA6: parseFloat(document.getElementById('prodSA6').value) || 0,
+                objetivo: parseFloat(document.getElementById('objetivo').value) || 0,
+                prodRealizadaStr: document.getElementById('prodRealizada').value,
+                prodRealizadaNum: prodNum,
                 bolhas: parseFloat(document.getElementById('bolhas').value) || 0,
-                carrosNOK: parseFloat(document.getElementById('carrosNOK').value) || 0,
+                carrosNOK: nokNum,
+                fttStr: calcularFTT(prodNum, nokNum),
                 liberacaoOffline: parseFloat(document.getElementById('liberacaoOffline').value) || 0,
                 reinspecao: parseFloat(document.getElementById('reinspecao').value) || 0,
-                reparos: parseFloat(document.getElementById('reparos').value) || 0,
+                tratativas: parseFloat(document.getElementById('tratativas').value) || 0,
                 top1_desc: document.getElementById('top1_desc').value,
                 top1_qtd: document.getElementById('top1_qtd').value,
                 top2_desc: document.getElementById('top2_desc').value,
@@ -671,11 +639,10 @@
         function validarPreenchimentoObrigatorio() {
             const objetivo = document.getElementById('objetivo').value.trim();
             const prodRealizada = document.getElementById('prodRealizada').value.trim();
-            const prodSA6 = document.getElementById('prodSA6').value.trim();
             const bolhas = document.getElementById('bolhas').value.trim();
             const carrosNOK = document.getElementById('carrosNOK').value.trim();
 
-            if (!objetivo || !prodRealizada || prodSA6 === '' || bolhas === '' || carrosNOK === '') {
+            if (!objetivo || !prodRealizada || bolhas === '' || carrosNOK === '') {
                 alert("⚠️ Atenção: Preencha todos os campos obrigatórios antes de salvar!");
                 return false;
             }
@@ -688,6 +655,7 @@
 
             const dados = extrairDadosFormulario();
             
+            // Verifica se o celular está sem internet
             if (!navigator.onLine) {
                 salvarOfflineLocalmente(dados);
                 exibirToast("💾 Sem internet! Dados salvos no aparelho. Serão enviados ao reconectar.");
@@ -711,8 +679,6 @@
         }
 
         function atualizarPreview() {
-            const d = extrairDadosFormulario();
-            document.getElementById('displayPorcentagemUI').innerText = d.porcentagemStr;
             document.getElementById('preview').innerText = gerarTextoWhatsApp();
         }
 
@@ -733,13 +699,12 @@
 
 🎯 Objetivo: ${d.objetivo}
 📊 Produção realizada: ${d.prodRealizadaStr}
-📈 % Atingido: ${d.porcentagemStr}
-🚗 Produção de SA6: ${d.prodSA6}
+📈 FTT: ${d.fttStr}
 🫧 Bolhas: ${d.bolhas}
 ❌ Carros NOK: ${d.carrosNOK}
 📲 Liberação Offline: ${d.liberacaoOffline}
 🔄 Reinspeção: ${d.reinspecao}
-🛠️ Reparos: ${d.reparos}
+🛠️ Tratativas: ${d.tratativas}
 
 🚨 TOP 3 PROBLEMAS DETECTADOS
 1️⃣ ${d.top1_desc}${d.top1_qtd ? ' - ' + String(d.top1_qtd).padStart(2, '0') : ''}
@@ -761,39 +726,12 @@
             return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : iso;
         }
 
-        function copiarTexto() {
-            const txt = gerarTextoWhatsApp();
-            navigator.clipboard.writeText(txt).then(() => {
-                exibirToast("📋 Mensagem copiada!");
-            }).catch(() => {
-                // Fallback para celulares antigos
-                const area = document.createElement('textarea');
-                area.value = txt;
-                document.body.appendChild(area);
-                area.select();
-                document.execCommand('copy');
-                document.body.removeChild(area);
-                exibirToast("📋 Mensagem copiada!");
-            });
-        }
-
-        function enviarWhatsApp() {
-            const txt = encodeURIComponent(gerarTextoWhatsApp());
-            window.open(`https://api.whatsapp.com/send?text=${txt}`, '_blank');
-        }
-
-        function exibirToast(msg) {
-            const t = document.getElementById('toast');
-            t.innerText = msg;
-            t.style.display = 'block';
-            setTimeout(() => { t.style.display = 'none'; }, 3500);
-        }
-
         async function limparTudo() {
             if (confirm("Deseja apagar os dados desta data da nuvem e do aparelho?")) {
                 try {
                     await db.collection(COLLECTION_NAME).doc(dataAtual).delete();
                     
+                    // Remove também do armazenamento local se existir
                     let pendentes = [];
                     const pendentesStr = localStorage.getItem(STORAGE_KEY_PENDENTES);
                     if (pendentesStr) {
@@ -813,213 +751,201 @@
             const corpo = document.getElementById('tabela-historico-corpo');
             const regs = cacheRegistros;
             if (regs.length === 0) {
-                corpo.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-muted);">Nenhum dado registrado na nuvem.</td></tr>`;
+                corpo.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted);">Nenhum dado registrado na nuvem.</td></tr>`;
                 return;
             }
             corpo.innerHTML = '';
             regs.slice().reverse().forEach(r => {
-                const meta = parseFloat(r.objetivo) || 0;
-                const prodNum = r.prodRealizadaNum !== undefined ? r.prodRealizadaNum : (parseFloat(String(r.prodRealizadaStr).replace(',', '.')) || 0);
-                const pct = meta > 0 ? ((prodNum / meta) * 100).toFixed(1) : '0.0';
-                
-                let badgeClass = 'badge-pct';
-                if (parseFloat(pct) >= 100) badgeClass += ' high';
-                else if (parseFloat(pct) < 70) badgeClass += ' low';
-
+                const ftt = r.fttStr || calcularFTT(r.prodRealizadaNum, r.carrosNOK);
+                const trat = r.tratativas !== undefined ? r.tratativas : (r.reparos || 0);
                 corpo.innerHTML += `<tr>
                     <td><span class="badge-date">${formatarDataBR(r.data)}</span></td>
                     <td>${r.objetivo}</td>
                     <td><b>${r.prodRealizadaStr}</b></td>
-                    <td><span class="${badgeClass}">${pct}%</span></td>
-                    <td>${r.prodSA6}</td>
+                    <td><b style="color:var(--accent-green)">${ftt}</b></td>
                     <td>${r.bolhas}</td>
                     <td>${r.carrosNOK}</td>
                     <td>${r.liberacaoOffline}</td>
-                    <td>${r.reparos !== undefined ? r.reparos : 0}</td>
+                    <td>${trat}</td>
                 </tr>`;
             });
         }
 
         function calcularEvolucaoPersonalizada() {
+            const regs = cacheRegistros;
             const container = document.getElementById('kpi-container-metrics');
-            const tipo = document.getElementById('tipoFiltro').value;
-            let filtrados = [];
-
-            if (tipo === 'dia') {
-                const dt = document.getElementById('filtroDataUnica').value;
-                filtrados = cacheRegistros.filter(r => r.data === dt);
-            } else if (tipo === 'semana') {
-                const dtRef = new Date(document.getElementById('filtroDataUnica').value || new Date());
-                const inicio = new Date(dtRef);
-                inicio.setDate(dtRef.getDate() - 6);
-                filtrados = cacheRegistros.filter(r => {
-                    const d = new Date(r.data);
-                    return d >= inicio && d <= dtRef;
-                });
-            } else if (tipo === 'mes') {
-                const dtRef = document.getElementById('filtroDataUnica').value;
-                const mesAno = dtRef.substring(0, 7);
-                filtrados = cacheRegistros.filter(r => r.data && r.data.startsWith(mesAno));
-            } else if (tipo === 'personalizado') {
-                const ini = document.getElementById('filtroDataInicio').value;
-                const fim = document.getElementById('filtroDataFim').value;
-                filtrados = cacheRegistros.filter(r => r.data >= ini && r.data <= fim);
-            }
-
-            if (filtrados.length === 0) {
-                container.innerHTML = `<div style="grid-column: span 4; text-align:center; color: var(--text-muted); padding: 20px;">Nenhum dado encontrado para o período selecionado.</div>`;
+            if (regs.length === 0) {
+                container.innerHTML = `<p style="color:var(--text-muted)">Sem dados suficientes para cálculo.</p>`;
                 return;
             }
 
-            let totalMeta = 0, totalProd = 0, totalSA6 = 0, totalBolhas = 0, totalNOK = 0, totalLib = 0, totalRep = 0;
-            
+            const tipo = document.getElementById('tipoFiltro').value;
+            let filtrados = [];
+            const hoje = new Date();
+
+            if (tipo === 'dia') {
+                const dt = document.getElementById('filtroDataUnica').value;
+                filtrados = regs.filter(r => r.data === dt);
+            } else if (tipo === 'semana') {
+                filtrados = regs.filter(r => {
+                    const dItem = new Date(r.data + 'T00:00:00');
+                    const diffTime = Math.abs(hoje - dItem);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    return diffDays <= 7;
+                });
+            } else if (tipo === 'mes') {
+                const dt = document.getElementById('filtroDataUnica').value;
+                if (dt) {
+                    const [ano, mes] = dt.split('-');
+                    filtrados = regs.filter(r => r.data.startsWith(`${ano}-${mes}`));
+                }
+            } else if (tipo === 'personalizado') {
+                const ini = document.getElementById('filtroDataInicio').value;
+                const fim = document.getElementById('filtroDataFim').value;
+                if (ini && fim) {
+                    filtrados = regs.filter(r => r.data >= ini && r.data <= fim);
+                }
+            }
+
+            let tProd = 0, tMeta = 0, tBolhas = 0, tNok = 0, tOff = 0, tTrat = 0;
             filtrados.forEach(r => {
-                totalMeta += parseFloat(r.objetivo) || 0;
-                totalProd += r.prodRealizadaNum !== undefined ? r.prodRealizadaNum : (parseFloat(String(r.prodRealizadaStr).replace(',', '.')) || 0);
-                totalSA6 += parseFloat(r.prodSA6) || 0;
-                totalBolhas += parseFloat(r.bolhas) || 0;
-                totalNOK += parseFloat(r.carrosNOK) || 0;
-                totalLib += parseFloat(r.liberacaoOffline) || 0;
-                totalRep += parseFloat(r.reparos) || 0;
+                tProd += r.prodRealizadaNum || 0;
+                tMeta += r.objetivo || 0;
+                tBolhas += r.bolhas || 0;
+                tNok += r.carrosNOK || 0;
+                tOff += r.liberacaoOffline || 0;
+                tTrat += r.tratativas !== undefined ? r.tratativas : (r.reparos || 0);
             });
 
-            const pctTotal = totalMeta > 0 ? ((totalProd / totalMeta) * 100).toFixed(1) : '0.0';
+            const fttGeral = calcularFTT(tProd, tNok);
 
             container.innerHTML = `
-                <div class="kpi-card" style="border-left-color: #2563eb;">
-                    <h4>🎯 Meta Total / Realizado</h4>
-                    <div class="val">${totalProd} / ${totalMeta}</div>
+                <div class="kpi-card" style="border-left-color: var(--accent-blue)">
+                    <h4>📊 Volume Total Produzido</h4>
+                    <div class="val">${tProd} carros</div>
                 </div>
-                <div class="kpi-card" style="border-left-color: #059669;">
-                    <h4>📈 % Atingimento Médio</h4>
-                    <div class="val" style="color: #34d399;">${pctTotal}%</div>
+                <div class="kpi-card" style="border-left-color: var(--accent-amber)">
+                    <h4>🎯 Meta Total (Objetivo)</h4>
+                    <div class="val">${tMeta} carros</div>
                 </div>
-                <div class="kpi-card" style="border-left-color: #d97706;">
-                    <h4>🚗 Total SA6</h4>
-                    <div class="val">${totalSA6}</div>
+                <div class="kpi-card" style="border-left-color: var(--accent-green)">
+                    <h4>📈 FTT Médio Período</h4>
+                    <div class="val">${fttGeral}</div>
                 </div>
-                <div class="kpi-card" style="border-left-color: #ef4444;">
-                    <h4>❌ Total Carros NOK</h4>
-                    <div class="val" style="color:#f87171;">${totalNOK}</div>
-                </div>
-                <div class="kpi-card" style="border-left-color: #8b5cf6;">
+                <div class="kpi-card" style="border-left-color: #ef4444">
                     <h4>🫧 Total Bolhas</h4>
-                    <div class="val">${totalBolhas}</div>
+                    <div class="val">${tBolhas} Bolhas</div>
                 </div>
-                <div class="kpi-card" style="border-left-color: #06b6d4;">
-                    <h4>📲 Liberação Offline</h4>
-                    <div class="val">${totalLib}</div>
+                <div class="kpi-card" style="border-left-color: #dc2626">
+                    <h4>❌ Total Carros NOK</h4>
+                    <div class="val">${tNok} NOK</div>
                 </div>
-                <div class="kpi-card" style="border-left-color: #f59e0b;">
-                    <h4>🛠️ Reparos Totais</h4>
-                    <div class="val">${totalRep}</div>
+                <div class="kpi-card" style="border-left-color: #3b82f6">
+                    <h4>📲 Total Lib. Offline</h4>
+                    <div class="val">${tOff} Off</div>
+                </div>
+                <div class="kpi-card" style="border-left-color: #8b5cf6">
+                    <h4>🛠️ Total Tratativas</h4>
+                    <div class="val">${tTrat} Tratativas</div>
                 </div>
             `;
         }
 
         function exportarExcel() {
-            if (cacheRegistros.length === 0) {
-                alert("⚠️ Não há registros salvos para exportar!");
-                return;
-            }
+            const regs = cacheRegistros;
+            if(regs.length === 0) { alert("Não há dados para exportar."); return; }
+            
+            const dadosPlanilha = regs.map(r => ({
+                "Data": formatarDataBR(r.data),
+                "Objetivo (Meta)": r.objetivo,
+                "Produção Realizada": r.prodRealizadaStr,
+                "FTT (%)": r.fttStr || calcularFTT(r.prodRealizadaNum, r.carrosNOK),
+                "Bolhas": r.bolhas,
+                "Carros NOK": r.carrosNOK,
+                "Liberação Offline": r.liberacaoOffline,
+                "Reinspeção": r.reinspecao,
+                "Tratativas": r.tratativas !== undefined ? r.tratativas : (r.reparos || 0)
+            }));
 
-            const dadosExportar = cacheRegistros.map(r => {
-                const meta = parseFloat(r.objetivo) || 0;
-                const prodNum = r.prodRealizadaNum !== undefined ? r.prodRealizadaNum : (parseFloat(String(r.prodRealizadaStr).replace(',', '.')) || 0);
-                const pct = meta > 0 ? ((prodNum / meta) * 100).toFixed(2) + '%' : '0.0%';
-
-                return {
-                    "Data": formatarDataBR(r.data),
-                    "Meta (Objetivo)": r.objetivo,
-                    "Produção Realizada": r.prodRealizadaStr,
-                    "% Atingido": pct,
-                    "SA6": r.prodSA6,
-                    "Bolhas": r.bolhas,
-                    "Carros NOK": r.carrosNOK,
-                    "Liberação Offline": r.liberacaoOffline,
-                    "Reinspeção": r.reinspecao,
-                    "Reparos": r.reparos !== undefined ? r.reparos : 0,
-                    "TOP 1 Problema": (r.top1_desc || '') + (r.top1_qtd ? ' (' + r.top1_qtd + ')' : ''),
-                    "TOP 2 Problema": (r.top2_desc || '') + (r.top2_qtd ? ' (' + r.top2_qtd + ')' : ''),
-                    "TOP 3 Problema": (r.top3_desc || '') + (r.top3_qtd ? ' (' + r.top3_qtd + ')' : ''),
-                    "Ocorrência": r.ocorrencia || '',
-                    "Ação": r.acao || ''
-                };
-            });
-
-            const ws = XLSX.utils.json_to_sheet(dadosExportar);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Infiltração");
-            XLSX.writeFile(wb, `Report_Infiltracao_${new Date().toISOString().split('T')[0]}.xlsx`);
+            const worksheet = XLSX.utils.json_to_sheet(dadosPlanilha);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Evolucao Infiltracao");
+            XLSX.writeFile(workbook, "report_infiltracao_evolucao.xlsx");
         }
 
-        function importarExcel(event) {
+        async function importarExcel(event) {
             const file = event.target.files[0];
-            if (!file) return;
+            if(!file) return;
 
             const reader = new FileReader();
             reader.onload = async function(e) {
                 try {
                     const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const sheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[sheetName];
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
                     const json = XLSX.utils.sheet_to_json(worksheet);
 
-                    if (json.length === 0) {
-                        alert("⚠️ Arquivo Excel vazio!");
-                        return;
-                    }
-
                     for (let row of json) {
-                        const dataStr = row["Data"] || row["data"];
-                        if (!dataStr) continue;
+                        let dt = row["Data"];
+                        if (dt) {
+                            if (dt.includes('/')) {
+                                const partes = dt.split('/');
+                                if (partes.length === 3) {
+                                    dt = `${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
+                                }
+                            }
 
-                        let isoDate = dataStr;
-                        if (dataStr.includes('/')) {
-                            const p = dataStr.split('/');
-                            if (p.length === 3) isoDate = `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
-                        }
+                            const prodNum = parseFloat(row["Produção Realizada"]) || 0;
+                            const nokNum = parseFloat(row["Carros NOK"]) || 0;
 
-                        const registro = {
-                            data: isoDate,
-                            objetivo: parseFloat(row["Meta (Objetivo)"] || row["Meta"] || row["objetivo"]) || 0,
-                            prodRealizadaStr: String(row["Produção Realizada"] || row["Realizado"] || 0),
-                            prodRealizadaNum: parseFloat(row["Produção Realizada"] || row["Realizado"]) || 0,
-                            prodSA6: parseFloat(row["SA6"]) || 0,
-                            bolhas: parseFloat(row["Bolhas"]) || 0,
-                            carrosNOK: parseFloat(row["Carros NOK"] || row["NOK"]) || 0,
-                            liberacaoOffline: parseFloat(row["Liberação Offline"]) || 0,
-                            reinspecao: parseFloat(row["Reinspeção"]) || 0,
-                            reparos: parseFloat(row["Reparos"]) || 0,
-                            top1_desc: row["TOP 1 Problema"] || '',
-                            top2_desc: row["TOP 2 Problema"] || '',
-                            top3_desc: row["TOP 3 Problema"] || '',
-                            ocorrencia: row["Ocorrência"] || '',
-                            acao: row["Ação"] || '',
-                            auditoria: [],
-                            obs: []
-                        };
-
-                        if (navigator.onLine) {
-                            await db.collection(COLLECTION_NAME).doc(isoDate).set(registro);
-                        } else {
-                            salvarOfflineLocalmente(registro);
+                            const objFormatado = {
+                                data: dt,
+                                objetivo: row["Objetivo (Meta)"] || 430,
+                                prodRealizadaStr: String(row["Produção Realizada"] || "0"),
+                                prodRealizadaNum: prodNum,
+                                bolhas: row["Bolhas"] || 0,
+                                carrosNOK: nokNum,
+                                fttStr: calcularFTT(prodNum, nokNum),
+                                liberacaoOffline: row["Liberação Offline"] || 0,
+                                reinspecao: row["Reinspeção"] || 0,
+                                tratativas: row["Tratativas"] !== undefined ? row["Tratativas"] : (row["Reparos"] || 0),
+                                top1_desc: "", top1_qtd: "",
+                                top2_desc: "", top2_qtd: "",
+                                top3_desc: "", top3_qtd: "",
+                                ocorrencia: "",
+                                acao: "",
+                                auditoria: [], obs: []
+                            };
+                            await db.collection(COLLECTION_NAME).doc(dt).set(objFormatado);
                         }
                     }
 
-                    exibirToast("📥 Dados do Excel importados com sucesso!");
+                    alert("Planilha importada e sincronizada com o Firebase com sucesso!");
                 } catch(err) {
-                    console.error("Erro ao importar Excel:", err);
-                    alert("❌ Erro ao ler o arquivo Excel. Verifique a estrutura das colunas.");
+                    alert("Erro ao ler o arquivo Excel. Verifique o formato.");
+                    console.error(err);
                 }
             };
             reader.readAsArrayBuffer(file);
         }
 
-        window.onload = function() {
-            inicializarApp();
-        };
+        function copiarTexto() {
+            navigator.clipboard.writeText(gerarTextoWhatsApp()).then(() => exibirToast("Texto copiado com sucesso!"));
+        }
+
+        function exibirToast(msg = "Operação realizada com sucesso!") {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 3000);
+        }
+
+        function enviarWhatsApp() {
+            window.open("https://api.whatsapp.com/send?text=" + encodeURIComponent(gerarTextoWhatsApp()), '_blank');
+        }
+
+        window.onload = inicializarApp;
     </script>
 </body>
 </html>
